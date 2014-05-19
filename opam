@@ -1,0 +1,12 @@
+opam-version: "1"
+maintainer: "Hugo Heuzard <hugo.heuzard@gmail.com>"
+homepage: "https://github.com/hhugo/reactiveList"
+authors: ["Hugo Heuzard <hugo.heuzard@gmail.com>"]
+tags: [ "reactive" "declarative" "signal" "event" "frp" ]
+depends: ["ocamlfind"]
+ocaml-version: [>= "3.11.0"]
+build:
+[
+  [ "ocaml" "pkg/build.ml" "native=%{ocaml-native}%"
+                           "native-dynlink=%{ocaml-native}%" ]
+]

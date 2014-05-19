@@ -1,0 +1,6 @@
+<src/reactiveList.*>: package(react)
+<src/reactiveDomList.*>: syntax(camlp4o), package(react,js_of_ocaml.syntax,js_of_ocaml)
+
+<test/test.*>: syntax(camlp4o),package(react,js_of_ocaml.syntax,js_of_ocaml)
+<test/test.js>: predicate(joo_weak)
+"src": include

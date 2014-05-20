@@ -11,12 +11,8 @@ let insertAt dom i x =
 
 let merge_patch (dom : Dom.node Js.t) (p : Dom.node Js.t p) =
   match p with
-  | P.C x ->
-    begin match Js.Opt.to_option dom##firstChild with
-      | Some _ -> ignore(dom##insertBefore(x,dom##firstChild))
-      | None -> ignore(dom##appendChild ((x :> Dom.node Js.t)))
-    end
-  | P.A x -> ignore(dom##appendChild ((x :> Dom.node Js.t)))
+  | P.I (i,x) when i < 0 ->
+    insertAt dom (dom##childNodes##length + 1 + i) x
   | P.I (i,x) -> insertAt dom i x
   | P.R i ->
     let nodes = dom##childNodes in

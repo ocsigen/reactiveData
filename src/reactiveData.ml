@@ -1,3 +1,5 @@
+(* #use "topfind";; *)
+(* #require "react";; *)
 module type DATA = sig
   type 'a d
   type 'a p
@@ -93,15 +95,12 @@ module DataList =   struct
   type 'a p =
     | I of int * 'a
     | R of int
-    | A of 'a
-    | C of 'a
-    | X of int * int
     | U of int * 'a
+    | X of int * int
+
 
   let map_d = List.map
   let map_p f = function
-    | A x -> A (f x)
-    | C x -> C (f x)
     | I (i,x) -> I (i, f x)
     | R i -> R i
     | X (i,j) -> X (i,j)
@@ -109,15 +108,15 @@ module DataList =   struct
 
   let merge op l =
     match op with
-    | C x -> x::l
-    | A x -> l@[x]
-    | I (i,x) ->
+    | I (i',x) ->
+      let i = if i' < 0 then List.length l + 1 + i' else i' in
       let rec aux acc n l = match n,l with
         | 0,l -> List.rev_append acc (x::l)
         | _,[] -> assert false
         | n,x::xs -> aux (x::acc) (pred n) xs
       in aux [] i l
-    | R i ->
+    | R i' ->
+      let i = if i' < 0 then List.length l + 1 + i' else i' in
       let rec aux acc n l = match n,l with
         | 0,x::l -> List.rev_append acc l
         | _,[] -> assert false
@@ -138,8 +137,8 @@ end
 module RList = struct
   include Make (DataList)
   module D = DataList
-  let append x s = patch s (D.A x)
-  let cons x s = patch s (D.C x)
+  let append x s = patch s (D.I (-1,x))
+  let cons x s = patch s (D.I (0,x))
   let insert x i s = patch s (D.I (i,x))
   let update x i s = patch s (D.U (i,x))
   let swap i j s = patch s (D.X (i,j))
@@ -152,14 +151,15 @@ module RList = struct
     let size1 = ref 0
     and size2 = ref 0 in
     let update sizex = function
-      | (D.I _ | D.C _ | D.A _ ) -> incr sizex
+      | (D.I _) -> incr sizex
       | (D.R _) -> decr sizex
       | (D.X _ | D.U _) -> () in
     let f = function
       | `E1 (Patch p) ->
         let m = match p with
-          | D.I _| D.C _| D.R _| D.U _ |D.X _ -> p
-          | D.A x -> D.I (!size1,x)
+          | D.I (pos,x) when pos < 0 -> D.I (pos - !size2,x)
+          | D.R pos when pos < 0 -> D.R (pos - !size2)
+          | D.I _| D.R _| D.U _ |D.X _ -> p
         in
         update size1 m;
         patch h m
@@ -168,11 +168,11 @@ module RList = struct
         set h (l @ value y)
       | `E2 (Patch p) ->
         let m = match p with
-          | D.A x -> p
+          | D.I (pos,x) when pos < 0 -> D.I (pos, x)
           | D.I (pos,x) -> D.I (!size1 + pos, x)
+          | D.R pos when pos < 0 -> D.R pos
           | D.R pos ->     D.R (pos + !size1)
           | D.U (pos,x) -> D.U (pos + !size1, x)
-          | D.C x ->       D.I (!size1, x)
           | D.X (i,j) ->   D.X (i + !size1, j + !size1)
         in
         update size2 m;
@@ -188,6 +188,11 @@ module RList = struct
 
 end
 
+(* let l,h = RList.make [2;3;4] *)
+(* let l2 = RList.map string_of_int l *)
+
+(* let _ = RList.append 5 h *)
+(* let _ = RList.value l *)
 module RMap(M : Map.S) = struct
   module Data = struct
     type 'a d = 'a M.t

@@ -47,10 +47,8 @@ module DataList :
     type 'a p =
         I of int * 'a
       | R of int
-      | A of 'a
-      | C of 'a
-      | X of int * int
       | U of int * 'a
+      | X of int * int
     val map_d : ('a -> 'b) -> 'a list -> 'b list
     val map_p : ('a -> 'b) -> 'a p -> 'b p
     val merge : 'a p -> 'a list -> 'a list

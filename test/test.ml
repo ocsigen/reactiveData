@@ -4,8 +4,8 @@ open RList
 (* create a reactive list of int *)
 let all,handle = make [0;1;2;3;4;5;6;7;8;9;]
 
-(* get the successor *)
-let ints = map succ all
+(* identity *)
+let ints = map (fun x -> x) all
 
 (* convert to string *)
 let strings : string RList.t = map string_of_int ints

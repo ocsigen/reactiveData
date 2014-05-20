@@ -1,6 +1,6 @@
 opam-version: "1"
 maintainer: "Hugo Heuzard <hugo.heuzard@gmail.com>"
-homepage: "https://github.com/hhugo/reactiveList"
+homepage: "https://github.com/hhugo/reactiveData"
 authors: ["Hugo Heuzard <hugo.heuzard@gmail.com>"]
 tags: [ "reactive" "declarative" "signal" "event" "frp" ]
 depends: ["ocamlfind"]

@@ -8,7 +8,7 @@ let builder = `Other
       "_build")
 
 let () =
-  Pkg.describe "reactiveList" ~builder [
+  Pkg.describe "reactiveData" ~builder [
     Pkg.lib "pkg/META";
     Pkg.lib ~exts:Exts.module_library "src/reactiveData";
     Pkg.lib ~exts:Exts.module_library "src/reactiveDomList" ]

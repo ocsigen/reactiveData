@@ -1,6 +1,7 @@
-open ReactiveList
+open ReactiveData
+open RList
 
-module P = Patch
+module P = DataList
 let insertAt dom i x =
   let nodes = dom##childNodes in
   assert (i <= nodes##length);
@@ -8,7 +9,7 @@ let insertAt dom i x =
   then ignore(dom##appendChild((x :> Dom.node Js.t)))
   else ignore(dom##insertBefore(x,nodes##item(i)))
 
-let merge_patch (dom : Dom.node Js.t) (p : Dom.node Js.t P.t) =
+let merge_patch (dom : Dom.node Js.t) (p : Dom.node Js.t p) =
   match p with
   | P.C x ->
     begin match Js.Opt.to_option dom##firstChild with
@@ -46,7 +47,7 @@ let rec removeChildren dom =
     ignore(dom##removeChild(c));
     removeChildren dom
 
-let merge_msg (dom : Dom.node Js.t) (msg : Dom.node Js.t ReactiveList.msg)  =
+let merge_msg (dom : Dom.node Js.t) (msg : Dom.node Js.t msg)  =
   match msg with
   | Set l ->
     (* Format.eprintf "replace all@."; *)
@@ -56,7 +57,7 @@ let merge_msg (dom : Dom.node Js.t) (msg : Dom.node Js.t ReactiveList.msg)  =
     (* Format.eprintf "patch@."; *)
     merge_patch dom p
 
-let update_children (dom : Dom.node Js.t) (nodes : Dom.node Js.t ReactiveList.t) =
+let update_children (dom : Dom.node Js.t) (nodes : Dom.node Js.t t) =
   removeChildren dom;
-  let _s : unit React.S.t = ReactiveList.fold (fun () msg -> merge_msg dom msg) nodes ()
+  let _s : unit React.S.t = fold (fun () msg -> merge_msg dom msg) nodes ()
   in ()

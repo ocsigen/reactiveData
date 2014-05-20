@@ -10,5 +10,5 @@ let builder = `Other
 let () =
   Pkg.describe "reactiveList" ~builder [
     Pkg.lib "pkg/META";
-    Pkg.lib ~exts:Exts.module_library "src/reactiveList";
+    Pkg.lib ~exts:Exts.module_library "src/reactiveData";
     Pkg.lib ~exts:Exts.module_library "src/reactiveDomList" ]

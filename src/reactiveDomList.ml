@@ -11,30 +11,36 @@ let insertAt dom i x =
 
 let merge_patch (dom : Dom.node Js.t) (p : Dom.node Js.t p) =
   match p with
-  | P.I (i,x) when i < 0 ->
-    insertAt dom (dom##childNodes##length + 1 + i) x
-  | P.I (i,x) -> insertAt dom i x
+  | P.I (i,x) ->
+    let i = if i < 0 then dom##childNodes##length + 1 + i else i in
+    insertAt dom i x
   | P.R i ->
+    let i = if i < 0 then dom##childNodes##length + 1 + i else i in
     let nodes = dom##childNodes in
     assert (i < nodes##length);
     ignore(dom##removeChild(nodes##item(i)))
-  | P.X (i,j) when i = j -> ()
-  | P.X (i,j) ->
-    let i, j = if i > j then j,i else i,j in
-    begin
-      match Js.Opt.to_option dom##childNodes##item(i),
-            Js.Opt.to_option dom##childNodes##item(j)
-      with
-      | Some i', Some j' ->
-        insertAt dom j i';
-        insertAt dom i j'
-
-      | _ -> assert false
-    end
   | P.U (i,x) ->
-    match Js.Opt.to_option dom##childNodes##item(i) with
+    let i = if i < 0 then dom##childNodes##length + 1 + i else i in
+    (match Js.Opt.to_option dom##childNodes##item(i) with
     | Some old -> ignore(dom##replaceChild(x,old))
-    | _ -> assert false
+    | _ -> assert false)
+  | P.X (i,j) ->
+    let i = if i < 0 then dom##childNodes##length + 1 + i else i in
+    let j = if j < 0 then dom##childNodes##length + 1 + j else j in
+    if i = j
+    then ()
+    else
+      let i, j = if i > j then j,i else i,j in
+      begin
+        match Js.Opt.to_option dom##childNodes##item(i),
+              Js.Opt.to_option dom##childNodes##item(j)
+        with
+        | Some i', Some j' ->
+          insertAt dom j i';
+          insertAt dom i j'
+
+        | _ -> assert false
+      end
 
 let rec removeChildren dom =
   match Js.Opt.to_option dom##lastChild with

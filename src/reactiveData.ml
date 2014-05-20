@@ -122,15 +122,19 @@ module DataList =   struct
         | _,[] -> assert false
         | n,x::xs -> aux (x::acc) (pred n) xs
       in aux [] i l
-    | X (i,j) ->
+    | U (i',x) ->
+      let i = if i' < 0 then List.length l + 1 + i' else i' in
       let a = Array.of_list l in
+      a.(i) <- x;
+      Array.to_list a
+    | X (i',j') ->
+      let a = Array.of_list l in
+      let len = Array.length a in
+      let i = if i' < 0 then len + 1 + i' else i' in
+      let j = if j' < 0 then len + 1 + j' else j' in
       let tmp = a.(j) in
       a.(j) <- a.(i);
       a.(i) <- tmp;
-      Array.to_list a
-    | U (i,x) ->
-      let a = Array.of_list l in
-      a.(i) <- x;
       Array.to_list a
 end
 
@@ -157,9 +161,11 @@ module RList = struct
     let f = function
       | `E1 (Patch p) ->
         let m = match p with
-          | D.I (pos,x) when pos < 0 -> D.I (pos - !size2,x)
-          | D.R pos when pos < 0 -> D.R (pos - !size2)
-          | D.I _| D.R _| D.U _ |D.X _ -> p
+          | D.I (pos,x) -> D.I ((if pos < 0 then pos - !size2 else pos), x)
+          | D.R pos     -> D.R  (if pos < 0 then pos - !size2 else pos)
+          | D.U (pos,x) -> D.U ((if pos < 0 then pos - !size2 else pos), x)
+          | D.X (i,j) ->   D.X ((if i < 0 then i - !size2 else i),
+                                (if j < 0 then j - !size2 else j))
         in
         update size1 m;
         patch h m
@@ -168,12 +174,11 @@ module RList = struct
         set h (l @ value y)
       | `E2 (Patch p) ->
         let m = match p with
-          | D.I (pos,x) when pos < 0 -> D.I (pos, x)
-          | D.I (pos,x) -> D.I (!size1 + pos, x)
-          | D.R pos when pos < 0 -> D.R pos
-          | D.R pos ->     D.R (pos + !size1)
-          | D.U (pos,x) -> D.U (pos + !size1, x)
-          | D.X (i,j) ->   D.X (i + !size1, j + !size1)
+          | D.I (pos,x) -> D.I ((if pos < 0 then pos else !size1 + pos), x)
+          | D.R pos     -> D.R  (if pos < 0 then pos else !size1 + pos)
+          | D.U (pos,x) -> D.U ((if pos < 0 then pos else !size1 + pos), x)
+          | D.X (i,j) ->   D.X ((if i < 0 then i else !size1 + i),
+                                (if j < 0 then j else !size1 + j))
         in
         update size2 m;
         patch h m
@@ -188,11 +193,6 @@ module RList = struct
 
 end
 
-(* let l,h = RList.make [2;3;4] *)
-(* let l2 = RList.map string_of_int l *)
-
-(* let _ = RList.append 5 h *)
-(* let _ = RList.value l *)
 module RMap(M : Map.S) = struct
   module Data = struct
     type 'a d = 'a M.t

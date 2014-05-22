@@ -14,18 +14,18 @@ let merge_one_patch (dom : Dom.node Js.t) (p : Dom.node Js.t p) =
     let i = if i < 0 then dom##childNodes##length + 1 + i else i in
     insertAt dom i x
   | R i ->
-    let i = if i < 0 then dom##childNodes##length + 1 + i else i in
+    let i = if i < 0 then dom##childNodes##length + i else i in
     let nodes = dom##childNodes in
     assert (i < nodes##length);
     ignore(dom##removeChild(nodes##item(i)))
   | U (i,x) ->
-    let i = if i < 0 then dom##childNodes##length + 1 + i else i in
+    let i = if i < 0 then dom##childNodes##length + i else i in
     (match Js.Opt.to_option dom##childNodes##item(i) with
     | Some old -> ignore(dom##replaceChild(x,old))
     | _ -> assert false)
   | X (i,j) ->
-    let i = if i < 0 then dom##childNodes##length + 1 + i else i in
-    let j = if j < 0 then dom##childNodes##length + 1 + j else j in
+    let i = if i < 0 then dom##childNodes##length + i else i in
+    let j = if j < 0 then dom##childNodes##length + j else j in
     if i = j
     then ()
     else

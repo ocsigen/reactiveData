@@ -41,6 +41,7 @@ sig
   val update : 'a -> int -> 'a handle -> unit
   val swap : int -> int -> 'a handle -> unit
   val concat : 'a t -> 'a t -> 'a t
+  val rev : 'a t -> 'a t
   val sort : ('a -> 'a -> int) -> 'a t -> 'a t
   val filter : ('a -> unit) -> 'a t -> 'a t
 end

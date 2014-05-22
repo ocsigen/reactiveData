@@ -21,7 +21,7 @@ let size4 = map Js.string size3
 let js_strings1 = map Js.string strings
 let js_strings2, handle2 = make [Js.string "one";Js.string "two"]
 
-let js_strings'' = concat js_strings2 js_strings1
+let js_strings'' = concat js_strings2 (rev js_strings1)
 let js_strings' = concat js_strings1 js_strings''
 let js_strings = concat size4 js_strings'
 
@@ -48,11 +48,11 @@ let _ = Dom_html.window##onload <- Dom.handler (fun _ ->
     let item,hand = make [] in
     let input : Dom_html.inputElement Js.t = Js.Unsafe.coerce (id "input") in
     let msgs = id "msgs" in
-    ReactiveDomList.update_children (msgs :> Dom.node Js.t) (map make_span item);
+    ReactiveDomList.update_children (msgs :> Dom.node Js.t) (map (fun s -> make_span (Js.string s)) item);
     input##onchange <- Dom_html.handler (fun _ ->
         let s = input##value in
         input##value <- Js.string "";
-        append s hand;
+        append (Js.to_string s) hand;
         Js._true);
 
     Js._true)

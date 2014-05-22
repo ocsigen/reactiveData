@@ -128,25 +128,27 @@ module DataList =   struct
         | n,x::xs -> aux (x::acc) (pred n) xs
       in aux [] i l
     | R i' ->
-      let i = if i' < 0 then List.length l + 1 + i' else i' in
+      let i = if i' < 0 then List.length l + i' else i' in
       let rec aux acc n l = match n,l with
         | 0,x::l -> List.rev_append acc l
-        | _,[] -> assert false
+        | _,[] -> failwith (Printf.sprintf "R(%d)" i)
         | n,x::xs -> aux (x::acc) (pred n) xs
       in aux [] i l
     | U (i',x) ->
-      let i = if i' < 0 then List.length l + 1 + i' else i' in
+      let i = if i' < 0 then List.length l + i' else i' in
       let a = Array.of_list l in
       a.(i) <- x;
       Array.to_list a
     | X (i',j') ->
       let a = Array.of_list l in
       let len = Array.length a in
-      let i = if i' < 0 then len + 1 + i' else i' in
-      let j = if j' < 0 then len + 1 + j' else j' in
-      let tmp = a.(j) in
-      a.(j) <- a.(i);
-      a.(i) <- tmp;
+      let i = if i' < 0 then len + i' else i' in
+      let j = if j' < 0 then len + j' else j' in
+      (try
+         let tmp = a.(j) in
+         a.(j) <- a.(i);
+         a.(i) <- tmp
+       with e -> Format.eprintf "%s L:%d i:%d j:%d j':%d@." (Printexc.to_string e) len i j j');
       Array.to_list a
   let merge p l = List.fold_left (fun l x -> merge_p x l) l p
 end
@@ -247,7 +249,27 @@ module RList = struct
         | None,None -> assert false
       ) tuple_ev in
     make_from (v1 @ v2) merged_ev
-  let sort eq t = assert false
+
+  let inverse : 'a . 'a p -> 'a p = function
+    | I (i,x) -> I(-i-1, x)
+    | U (i,x) -> U(-i-1, x)
+    | R i -> R (-i-1)
+    | X (i,j) -> X (-i-1,-j-1)
+
+  let rev t =
+    let e = React.E.map (function
+        | Set l -> Set (List.rev l)
+        | Patch p -> Patch (List.map inverse p))  (event t)
+    in
+    make_from (List.rev (value t)) e
+
+  let sort eq t =
+    let e = React.E.map (function
+        | Set l -> Set (List.sort eq l)
+        | Patch p -> Patch p)  (event t)
+    in
+    make_from (List.sort eq (value t)) e
+
   let filter f t = assert false
 
 end

@@ -1,8 +1,10 @@
 open ReactiveData
 open RList
 
+
+let _ = Lwt_js.yield
 (* create a reactive list of int *)
-let all,handle = make [0;1;2;3;4;5;6;7;8;9;]
+let all,handle = make [0;1;2]
 
 (* identity *)
 let ints = map (fun x -> x) all
@@ -10,10 +12,18 @@ let ints = map (fun x -> x) all
 (* convert to string *)
 let strings : string RList.t = map string_of_int ints
 
+let size : int React.E.t = React.S.changes (React.S.map List.length (RList.value_s strings))
+let size2 = make_from [] (React.E.map (fun v -> Set [v]) size)
+let size3 = map string_of_int size2
+let size4 = map Js.string size3
+
 (* convert to javascript string *)
 let js_strings1 = map Js.string strings
 let js_strings2, handle2 = make [Js.string "one";Js.string "two"]
-let js_strings = concat js_strings1 js_strings2
+
+let js_strings'' = concat js_strings2 js_strings1
+let js_strings' = concat js_strings1 js_strings''
+let js_strings = concat size4 js_strings'
 (* dom text node *)
 let texts : Dom.node Js.t RList.t = map (fun s -> (Dom_html.document##createTextNode(s) :> Dom.node Js.t)) js_strings
 
@@ -70,7 +80,12 @@ let _ =
             swap i j handle2
           else shuf () in
         shuf ()
+      );
+    Js.Unsafe.global##show <- (fun () ->
+        let s = String.concat ", " (List.map Js.to_string  (value js_strings)) in
+        Js.string s
       )
+
 
 
 

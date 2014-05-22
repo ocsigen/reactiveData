@@ -24,24 +24,37 @@ let js_strings2, handle2 = make [Js.string "one";Js.string "two"]
 let js_strings'' = concat js_strings2 js_strings1
 let js_strings' = concat js_strings1 js_strings''
 let js_strings = concat size4 js_strings'
-(* dom text node *)
-let texts : Dom.node Js.t RList.t = map (fun s -> (Dom_html.document##createTextNode(s) :> Dom.node Js.t)) js_strings
+
+let make_span t =
+  let t = (Dom_html.document##createTextNode(t) :> Dom.node Js.t) in
+  let s = Dom_html.createSpan Dom_html.document in
+  s##style##width <- Js.string "50px;";
+  s##style##display <- Js.string "block";
+  ignore(s##appendChild(t));
+  (s :> Dom.node Js.t)
 
 (* dom span element *)
-let spans : Dom.node Js.t RList.t = map (fun textnode ->
-    let s = Dom_html.createSpan Dom_html.document in
-    s##style##width <- Js.string "50px;";
-    s##style##display <- Js.string "block";
-    ignore(s##appendChild(textnode));
-    (s :> Dom.node Js.t)
-  ) texts
+let spans : Dom.node Js.t RList.t = map make_span js_strings
+
+let id x =
+  let content = Dom_html.document##getElementById(Js.string x) in
+  Js.Opt.get content (fun _ -> assert false)
 
 
 let _ = Dom_html.window##onload <- Dom.handler (fun _ ->
-
-    let content = Dom_html.document##getElementById(Js.string "main") in
-    let content = Js.Opt.get content (fun _ -> assert false) in
+    let content = id "main" in
     ReactiveDomList.update_children (content :> Dom.node Js.t) spans;
+
+    let item,hand = make [] in
+    let input : Dom_html.inputElement Js.t = Js.Unsafe.coerce (id "input") in
+    let msgs = id "msgs" in
+    ReactiveDomList.update_children (msgs :> Dom.node Js.t) (map make_span item);
+    input##onchange <- Dom_html.handler (fun _ ->
+        let s = input##value in
+        input##value <- Js.string "";
+        append s hand;
+        Js._true);
+
     Js._true)
 
 let _ =

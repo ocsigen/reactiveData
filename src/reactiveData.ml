@@ -250,7 +250,6 @@ module RList = struct
   let sort eq t = assert false
   let filter f t = assert false
 
-
 end
 
 module RMap(M : Map.S) = struct

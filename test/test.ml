@@ -62,13 +62,13 @@ let _ =
     Js.Unsafe.global##remove <- (fun s -> remove s handle);
     Js.Unsafe.global##append <- (fun s -> append s handle);
     Js.Unsafe.global##insert <- (fun s i -> insert s i handle);
-    Js.Unsafe.global##swap <- (fun i j -> swap i j handle);
+    Js.Unsafe.global##move <- (fun i j -> move i j handle);
     Js.Unsafe.global##update <- (fun s i -> update s i handle);
     Js.Unsafe.global##cons2 <- (fun s -> cons s handle2);
     Js.Unsafe.global##remove2 <- (fun s -> remove s handle2);
     Js.Unsafe.global##append2 <- (fun s -> append s handle2);
     Js.Unsafe.global##insert2 <- (fun s i -> insert s i handle2);
-    Js.Unsafe.global##swap2 <- (fun i j -> swap i j handle2);
+    Js.Unsafe.global##move2 <- (fun i j -> move i j handle2);
     Js.Unsafe.global##update2 <- (fun s i -> update s i handle2);
 
     Js.Unsafe.global##shuffle <- (fun () ->
@@ -77,8 +77,10 @@ let _ =
           let i = Random.int len in
           let j = Random.int len in
           if i <> j
-          then
-            swap i j handle
+          then begin
+            Format.printf "move %d %+d@." i (j-i);
+            move i (j - i) handle
+          end
           else shuf () in
         shuf ()
       );
@@ -90,7 +92,10 @@ let _ =
           let j = Random.int len in
           if i <> j
           then
-            swap i j handle2
+            begin
+              Format.printf "move %d %+d@." i (j-i);
+              move i (j - i) handle2
+            end
           else shuf () in
         shuf ()
       );

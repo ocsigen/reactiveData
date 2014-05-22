@@ -139,17 +139,28 @@ module DataList =   struct
       let a = Array.of_list l in
       a.(i) <- x;
       Array.to_list a
-    | X (i',j') ->
+    | X (i',offset) ->
       let a = Array.of_list l in
       let len = Array.length a in
       let i = if i' < 0 then len + i' else i' in
-      let j = if j' < 0 then len + j' else j' in
-      (try
-         let tmp = a.(j) in
-         a.(j) <- a.(i);
-         a.(i) <- tmp
-       with e -> Format.eprintf "%s L:%d i:%d j:%d j':%d@." (Printexc.to_string e) len i j j');
+      let v = a.(i) in
+      if offset > 0
+      then begin
+        for j = i to i + offset - 1 do
+          assert (j + 1 < len);
+          a.(j) <- a.(j + 1)
+        done;
+        a.(i+offset) <- v
+      end
+      else begin
+        for j = i downto i + offset + 1 do
+          assert (j - 1 >= 0);
+          a.(j) <- a.(j - 1)
+        done;
+        a.(i+offset) <- v
+      end;
       Array.to_list a
+
   let merge p l = List.fold_left (fun l x -> merge_p x l) l p
 end
 
@@ -166,14 +177,14 @@ module RList = struct
   let cons x s = patch s [D.I (0,x)]
   let insert x i s = patch s [D.I (i,x)]
   let update x i s = patch s [D.U (i,x)]
-  let swap i j s = patch s [D.X (i,j)]
+  let move i j s = patch s [D.X (i,j)]
   let remove i s = patch s [D.R i]
 
   let string_of_p = function
     | D.I (pos,_) -> Printf.sprintf "insert at %d" pos
     | D.U (pos,_) -> Printf.sprintf "update at %d" pos
     | D.R pos -> Printf.sprintf "remove at %d" pos
-    | D.X (pos1,pos2) -> Printf.sprintf "swap (%d,%d)" pos1 pos2
+    | D.X (pos1,offset) -> Printf.sprintf "move (%d,%d)" pos1 offset
 
   let concat : 'a t -> 'a t -> 'a t = fun x y ->
     let v1 = value x
@@ -196,8 +207,7 @@ module RList = struct
             D.I (i, x)
           | D.R pos     -> D.R  (if pos < 0 then pos - !size2 else pos)
           | D.U (pos,x) -> D.U ((if pos < 0 then pos - !size2 else pos), x)
-          | D.X (i,j) ->   D.X ((if i < 0 then i - !size2 else i),
-                                (if j < 0 then j - !size2 else j))
+          | D.X (i,j) ->   D.X ((if i < 0 then i - !size2 else i),j)
         in
         size_with_patch size1 m;
         m) in
@@ -206,8 +216,7 @@ module RList = struct
           | D.I (pos,x) -> D.I ((if pos < 0 then pos else !size1 + pos), x)
           | D.R pos     -> D.R  (if pos < 0 then pos else !size1 + pos)
           | D.U (pos,x) -> D.U ((if pos < 0 then pos else !size1 + pos), x)
-          | D.X (i,j) ->   D.X ((if i < 0 then i else !size1 + i),
-                                (if j < 0 then j else !size1 + j))
+          | D.X (i,j) ->   D.X ((if i < 0 then i else !size1 + i),j)
         in
         size_with_patch size2 m;
         m) in
@@ -254,7 +263,7 @@ module RList = struct
     | I (i,x) -> I(-i-1, x)
     | U (i,x) -> U(-i-1, x)
     | R i -> R (-i-1)
-    | X (i,j) -> X (-i-1,-j-1)
+    | X (i,j) -> X (-i-1,-j)
 
   let rev t =
     let e = React.E.map (function

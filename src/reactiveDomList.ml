@@ -23,21 +23,14 @@ let merge_one_patch (dom : Dom.node Js.t) (p : Dom.node Js.t p) =
     (match Js.Opt.to_option dom##childNodes##item(i) with
     | Some old -> ignore(dom##replaceChild(x,old))
     | _ -> assert false)
-  | X (i,j) ->
+  | X (i,move) ->
     let i = if i < 0 then dom##childNodes##length + i else i in
-    let j = if j < 0 then dom##childNodes##length + j else j in
-    if i = j
+    if move = 0
     then ()
     else
-      let i, j = if i > j then j,i else i,j in
       begin
-        match Js.Opt.to_option dom##childNodes##item(i),
-              Js.Opt.to_option dom##childNodes##item(j)
-        with
-        | Some i', Some j' ->
-          insertAt dom j i';
-          insertAt dom i j'
-
+        match Js.Opt.to_option dom##childNodes##item(i) with
+        | Some i' -> insertAt dom (i+ if move > 0 then move + 1 else move) i'
         | _ -> assert false
       end
 

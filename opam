@@ -4,6 +4,7 @@ homepage: "https://github.com/hhugo/reactiveData"
 authors: ["Hugo Heuzard <hugo.heuzard@gmail.com>"]
 tags: [ "reactive" "declarative" "signal" "event" "frp" ]
 depends: ["ocamlfind" "react"]
+depopts: ["js_of_ocaml"]
 ocaml-version: [>= "3.11.0"]
 build:
 [

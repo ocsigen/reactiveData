@@ -4,6 +4,7 @@ module type DATA = sig
   val merge : 'a patch -> 'a data -> 'a data
   val map_patch : ('a -> 'b) -> 'a patch -> 'b patch
   val map_data : ('a -> 'b) -> 'a data -> 'b data
+  val empty : 'a data
 end
 module type S = sig
   type 'a data
@@ -11,8 +12,10 @@ module type S = sig
   type 'a msg = Patch of 'a patch | Set of 'a data
   type 'a handle
   type 'a t
+  val empty : 'a t
   val make : 'a data -> 'a t * 'a handle
   val make_from : 'a data -> 'a msg React.E.t -> 'a t
+  val const : 'a data -> 'a t
   val patch : 'a handle -> 'a patch -> unit
   val set : 'a handle -> 'a data -> unit
   val map_msg : ('a -> 'b) -> 'a msg -> 'b msg
@@ -34,12 +37,17 @@ sig
     | X of int * int
   include S with type 'a data = 'a list
              and type 'a patch = 'a p list
+
+  val nil : 'a t
   val append : 'a -> 'a handle -> unit
   val cons : 'a -> 'a handle -> unit
   val insert : 'a -> int -> 'a handle -> unit
   val remove : int -> 'a handle -> unit
   val update : 'a -> int -> 'a handle -> unit
   val move : int -> int -> 'a handle -> unit
+
+  val singleton : 'a -> 'a t
+  val singleton_s : 'a React.S.t -> 'a t
   val concat : 'a t -> 'a t -> 'a t
   val rev : 'a t -> 'a t
   val sort : ('a -> 'a -> int) -> 'a t -> [`Not_implemented]

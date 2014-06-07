@@ -6,6 +6,7 @@ module type DATA = sig
   val merge : 'a patch -> 'a data -> 'a data
   val map_patch : ('a -> 'b) -> 'a patch -> 'b patch
   val map_data : ('a -> 'b) -> 'a data -> 'b data
+  val empty : 'a data
 end
 module type S = sig
   type 'a data
@@ -13,8 +14,10 @@ module type S = sig
   type 'a msg = Patch of 'a patch | Set of 'a data
   type 'a handle
   type 'a t
+  val empty : 'a t
   val make : 'a data -> 'a t * 'a handle
   val make_from : 'a data -> 'a msg React.E.t -> 'a t
+  val const : 'a data -> 'a t
   val patch : 'a handle -> 'a patch -> unit
   val set   : 'a handle -> 'a data -> unit
   val map_msg : ('a -> 'b) -> 'a msg -> 'b msg
@@ -40,10 +43,16 @@ module Make(D : DATA) :
 
   type 'a handle = ?step:React.step -> 'a msg -> unit
 
-  type 'a t = {
+  type 'a mut = {
     current : 'a data ref;
     event : 'a msg React.E.t;
   }
+
+  type 'a t =
+    | Const of 'a data
+    | Mut of 'a mut
+
+  let empty = Const D.empty
 
   let make l =
     let initial_event,send = React.E.create () in
@@ -54,7 +63,7 @@ module Make(D : DATA) :
           | Patch p -> current := merge p !current
         end;
         msg) initial_event in
-    {current;event},send
+    Mut {current;event},send
 
   let make_from l initial_event =
     let current = ref l in
@@ -64,40 +73,55 @@ module Make(D : DATA) :
           | Patch p -> current := merge p !current
         end;
         msg) initial_event in
-    {current;event}
+    Mut {current;event}
+
+  let const x = Const x
 
   let map_msg (f : 'a -> 'b) : 'a msg -> 'b msg = function
     | Set l -> Set (map_data f l)
     | Patch p -> Patch (map_patch f p)
 
   let map f s =
-    let current = ref (map_data f !(s.current)) in
-    let event = React.E.map (fun msg ->
-        let msg = map_msg f msg in
-        begin match msg with
-          | Set l -> current := l;
-          | Patch p -> current := merge p !current
-        end;
-        msg) s.event in
-    {current ;event}
+    match s with
+    | Const x -> Const (map_data f x)
+    | Mut s ->
+      let current = ref (map_data f !(s.current)) in
+      let event = React.E.map (fun msg ->
+          let msg = map_msg f msg in
+          begin match msg with
+            | Set l -> current := l;
+            | Patch p -> current := merge p !current
+          end;
+          msg) s.event in
+      Mut {current ;event}
 
-  let value s = !(s.current)
+  let value s = match s with
+    | Const c -> c
+    | Mut s -> !(s.current)
 
-  let event s = s.event
+  let event s = match s with
+    | Const _ -> React.E.never
+    | Mut s -> s.event
 
   let patch (s : 'a handle) p = s (Patch p)
 
   let set (s : 'a handle) p = s (Set p)
 
   let fold f s acc =
-    let acc = f acc (Set (!(s.current))) in
-    React.S.fold f acc s.event
+    match s with
+    | Const c -> React.S.const (f acc (Set c))
+    | Mut s ->
+      let acc = f acc (Set (!(s.current))) in
+      React.S.fold f acc s.event
 
   let value_s (s : 'a t) : 'a data React.S.t =
-    React.S.fold (fun l msg ->
-        match msg with
-        | Set l -> l
-        | Patch p -> merge p l) (!(s.current)) s.event
+    match s with
+    | Const c -> React.S.const c
+    | Mut s ->
+      React.S.fold (fun l msg ->
+          match msg with
+          | Set l -> l
+          | Patch p -> merge p l) (!(s.current)) s.event
 
 end
 
@@ -109,7 +133,7 @@ module DataList =   struct
     | U of int * 'a
     | X of int * int
   type 'a patch = 'a p list
-
+  let empty = []
   let map_data = List.map
   let map_patch f = function
     | I (i,x) -> I (i, f x)
@@ -173,6 +197,7 @@ module RList = struct
     | U of int * 'a
     | X of int * int
 
+  let nil = empty
   let append x s = patch s [D.I (-1,x)]
   let cons x s = patch s [D.I (0,x)]
   let insert x i s = patch s [D.I (i,x)]
@@ -185,6 +210,21 @@ module RList = struct
     | D.U (pos,_) -> Printf.sprintf "update at %d" pos
     | D.R pos -> Printf.sprintf "remove at %d" pos
     | D.X (pos1,offset) -> Printf.sprintf "move (%d,%d)" pos1 offset
+
+  let singleton x = const [x]
+
+  let singleton_s s =
+    let first = ref true in
+    let e,send = React.E.create () in
+    let _ = React.S.map (fun x ->
+        if !first
+        then send (Patch [I(0,x)])
+        else begin
+          first:=false;
+          send (Patch [U(0,x)])
+        end) s in
+    make_from [] e
+
 
   let concat : 'a t -> 'a t -> 'a t = fun x y ->
     let v1 = value x
@@ -295,6 +335,7 @@ module RMap(M : Map.S) = struct
       | `Add (k,a) -> `Add (k,f a)
       | `Del k -> `Del k
     let map_data f d = M.map f d
+    let empty = M.empty
   end
   include Make (Data)
 end

@@ -6,14 +6,3 @@ archive(byte, plugin) = "reactiveData.cma"
 archive(native) = "reactiveData.cmxa"
 archive(native, plugin) = "reactiveData.cmxs"
 exists_if = "reactiveData.cma"
-
-package "jsoo" (
-  description = "Declarative events and signals for OCaml"
-  version = "[distributed with ReactiveList]"
-  requires = "js_of_ocaml,reactiveData"
-  archive(byte) = "reactiveDomList.cma"
-  archive(byte, plugin) = "reactiveDomList.cma"
-  archive(native) = "reactiveDomList.cmxa"
-  archive(native, plugin) = "reactiveDomList.cmxs"
-  exists_if = "reactiveDomList.cma"
-)

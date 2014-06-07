@@ -42,10 +42,9 @@ sig
   val move : int -> int -> 'a handle -> unit
   val concat : 'a t -> 'a t -> 'a t
   val rev : 'a t -> 'a t
-  val sort : ('a -> 'a -> int) -> 'a t -> 'a t
-  val filter : ('a -> unit) -> 'a t -> 'a t
+  val sort : ('a -> 'a -> int) -> 'a t -> [`Not_implemented]
+  val filter : ('a -> unit) -> 'a t -> [`Not_implemented]
 end
+
 module RMap(M : Map.S) : S with type 'a data = 'a M.t
                             and type 'a patch = [ `Add of M.key * 'a | `Del of M.key ]
-module RArray : S with type 'a data = 'a array
-                   and type 'a patch = unit

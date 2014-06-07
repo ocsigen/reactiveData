@@ -272,14 +272,14 @@ module RList = struct
     in
     make_from (List.rev (value t)) e
 
-  let sort eq t =
-    let e = React.E.map (function
-        | Set l -> Set (List.sort eq l)
-        | Patch p -> Patch p)  (event t)
-    in
-    make_from (List.sort eq (value t)) e
+  let sort eq t = `Not_implemented
+    (* let e = React.E.map (function *)
+    (*     | Set l -> Set (List.sort eq l) *)
+    (*     | Patch p -> Patch p)  (event t) *)
+    (* in *)
+    (* make_from (List.sort eq (value t)) e *)
 
-  let filter f t = assert false
+  let filter f t = `Not_implemented
 
 end
 
@@ -295,17 +295,6 @@ module RMap(M : Map.S) = struct
       | `Add (k,a) -> `Add (k,f a)
       | `Del k -> `Del k
     let map_data f d = M.map f d
-  end
-  include Make (Data)
-end
-
-module RArray = struct
-  module Data = struct
-    type 'a data = 'a array
-    type 'a patch = unit
-    let merge p d = d
-    let map_patch f p = p
-    let map_data f a = Array.map f a
   end
   include Make (Data)
 end

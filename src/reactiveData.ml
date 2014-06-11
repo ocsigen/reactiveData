@@ -172,7 +172,7 @@ module DataList =   struct
       let i = if i' < 0 then List.length l + i' else i' in
       let rec aux acc n l = match n,l with
         | 0,x::l -> List.rev_append acc l
-        | _,[] -> failwith (Printf.sprintf "R(%d)" i)
+        | _,[] -> assert false
         | n,x::xs -> aux (x::acc) (pred n) xs
       in aux [] i l
     | U (i',x) ->
@@ -221,12 +221,6 @@ module RList = struct
   let update x i s = patch s [D.U (i,x)]
   let move i j s = patch s [D.X (i,j)]
   let remove i s = patch s [D.R i]
-
-  let string_of_p = function
-    | D.I (pos,_) -> Printf.sprintf "insert at %d" pos
-    | D.U (pos,_) -> Printf.sprintf "update at %d" pos
-    | D.R pos -> Printf.sprintf "remove at %d" pos
-    | D.X (pos1,offset) -> Printf.sprintf "move (%d,%d)" pos1 offset
 
   let singleton x = const [x]
 

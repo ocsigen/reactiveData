@@ -1,4 +1,6 @@
-Reactive Data : Functional reactive programming with incremental changes in data structures
+**Reactive Data**
+
+*Functional reactive programming with incremental changes in data structures*
 
 ReactiveData is an OCaml module for functional reactive
 programming (FRP) based on React. It adds support to incremental

@@ -227,15 +227,15 @@ module RList = struct
   let singleton_s s =
     let first = ref true in
     let e,send = React.E.create () in
+    let result = make_from [] e in
     let _ = React.S.map (fun x ->
         if !first
-        then send (Patch [I(0,x)])
-        else begin
+        then begin
           first:=false;
-          send (Patch [U(0,x)])
-        end) s in
-    make_from [] e
-
+          send (Patch [I(0,x)])
+        end
+        else send (Patch [U(0,x)])) s in
+    result
 
   let concat : 'a t -> 'a t -> 'a t = fun x y ->
     let v1 = value x

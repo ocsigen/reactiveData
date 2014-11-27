@@ -34,6 +34,7 @@ module type S = sig
   val empty : 'a t
   val make : 'a data -> 'a t * 'a handle
   val make_from : 'a data -> 'a msg React.E.t -> 'a t
+  val make_from_s : 'a data React.S.t -> 'a t
   val const : 'a data -> 'a t
   val patch : 'a handle -> 'a patch -> unit
   val set   : 'a handle -> 'a data -> unit
@@ -139,6 +140,9 @@ module Make(D : DATA) :
           match msg with
           | Set l -> l
           | Patch p -> merge p l) (!(s.current)) s.event
+
+  let make_from_s s =
+    make_from (React.S.value s) (React.E.map (fun e -> Set e) (React.S.changes s))
 
 end
 

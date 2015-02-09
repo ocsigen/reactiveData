@@ -1,4 +1,5 @@
 opam-version: "1"
+version: "dev"
 maintainer: "Hugo Heuzard <hugo.heuzard@gmail.com>"
 homepage: "https://github.com/hhugo/reactiveData"
 authors: ["Hugo Heuzard <hugo.heuzard@gmail.com>"]

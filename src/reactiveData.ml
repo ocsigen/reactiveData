@@ -146,7 +146,7 @@ module Make(D : DATA) :
 
 end
 
-module DataList =   struct
+module DataList = struct
   type 'a data = 'a list
   type 'a p =
     | I of int * 'a
@@ -169,14 +169,14 @@ module DataList =   struct
       let i = if i' < 0 then List.length l + 1 + i' else i' in
       let rec aux acc n l = match n,l with
         | 0,l -> List.rev_append acc (x::l)
-        | _,[] -> assert false
+        | _,[] -> failwith "ReactiveData.Rlist.merge"
         | n,x::xs -> aux (x::acc) (pred n) xs
       in aux [] i l
     | R i' ->
       let i = if i' < 0 then List.length l + i' else i' in
       let rec aux acc n l = match n,l with
         | 0,x::l -> List.rev_append acc l
-        | _,[] -> assert false
+        | _,[] -> failwith "ReactiveData.Rlist.merge"
         | n,x::xs -> aux (x::acc) (pred n) xs
       in aux [] i l
     | U (i',x) ->
@@ -191,15 +191,15 @@ module DataList =   struct
       let v = a.(i) in
       if offset > 0
       then begin
+        if (i + offset >= len) then failwith "ReactiveData.Rlist.merge";
         for j = i to i + offset - 1 do
-          assert (j + 1 < len);
           a.(j) <- a.(j + 1)
         done;
         a.(i+offset) <- v
       end
       else begin
+        if (i + offset < 0) then failwith "ReactiveData.Rlist.merge";
         for j = i downto i + offset + 1 do
-          assert (j - 1 >= 0);
           a.(j) <- a.(j - 1)
         done;
         a.(i+offset) <- v
@@ -280,8 +280,10 @@ module RList = struct
           match acc,x with
           | (None,p2),`E1 x -> Some x,p2
           | (p1,None),`E2 x -> p1, Some x
-          | _ -> assert false) (None,None) [React.E.map (fun e -> `E1 e) (event x);
-                                            React.E.map (fun e -> `E2 e) (event y)] in
+          | _ -> assert false)
+        (None,None)
+        [React.E.map (fun e -> `E1 e) (event x);
+         React.E.map (fun e -> `E2 e) (event y)] in
     let merged_ev = React.E.map (fun p ->
         match p with
         | Some (Set p1), Some (Set p2) ->

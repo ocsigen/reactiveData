@@ -3,6 +3,7 @@ version: "dev"
 maintainer: "Hugo Heuzard <hugo.heuzard@gmail.com>"
 homepage: "https://github.com/hhugo/reactiveData"
 authors: ["Hugo Heuzard <hugo.heuzard@gmail.com>"]
+dev-repo: "https://github.com/hhugo/reactiveData.git"
 tags: [ "reactive" "declarative" "signal" "event" "frp" ]
 license: "LGPL-3.0 with OCaml linking exception"
 depends: ["ocamlfind" "react"]

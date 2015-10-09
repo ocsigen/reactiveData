@@ -24,6 +24,10 @@ module type DATA = sig
   val map_patch : ('a -> 'b) -> 'a patch -> 'b patch
   val map_data : ('a -> 'b) -> 'a data -> 'b data
   val empty : 'a data
+  val diff :
+    'a data -> 'a data ->
+    eq:('a -> 'a -> bool) ->
+    'a patch
 end
 module type S = sig
   type 'a data
@@ -32,8 +36,9 @@ module type S = sig
   type 'a handle
   type 'a t
   val empty : 'a t
-  val make : 'a data -> 'a t * 'a handle
-  val make_from : 'a data -> 'a msg React.E.t -> 'a t
+  val make : ?eq:('a -> 'a -> bool) -> 'a data -> 'a t * 'a handle
+  val make_from :
+    ?eq:('a -> 'a -> bool) -> 'a data -> 'a msg React.E.t -> 'a t
   val make_from_s : 'a data React.S.t -> 'a t
   val const : 'a data -> 'a t
   val patch : 'a handle -> 'a patch -> unit
@@ -45,9 +50,11 @@ module type S = sig
   val value_s : 'a t -> 'a data React.S.t
   val event : 'a t -> 'a msg React.E.t
 end
+
 module Make(D : DATA) :
   S with type 'a data = 'a D.data
-     and type 'a patch = 'a D.patch = struct
+     and type 'a patch = 'a D.patch =
+struct
 
   type 'a data = 'a D.data
   type 'a patch = 'a D.patch
@@ -59,20 +66,21 @@ module Make(D : DATA) :
     | Patch of 'a patch
     | Set of 'a data
 
-  type 'a handle = ?step:React.step -> 'a msg -> unit
-
   type 'a mut = {
     current : 'a data ref;
-    event : 'a msg React.E.t;
+    event   : 'a msg React.E.t;
   }
 
   type 'a t =
     | Const of 'a data
     | Mut of 'a mut
 
+  type 'a handle =
+    'a mut * ('a -> 'a -> bool) * (?step:React.step -> 'a msg -> unit)
+
   let empty = Const D.empty
 
-  let make l =
+  let make ?(eq = (=)) l =
     let initial_event,send = React.E.create () in
     let current = ref l in
     let event = React.E.map (fun msg ->
@@ -81,19 +89,31 @@ module Make(D : DATA) :
           | Patch p -> current := merge p !current
         end;
         msg) initial_event in
-    Mut {current;event},send
+    let r = {current; event} in
+    (Mut r : _ t), ((r, eq, send) : _ handle)
 
-  let make_from l initial_event =
+  let make_from ?(eq = (=)) l e =
     let current = ref l in
-    let event = React.E.map (fun msg ->
-        begin match msg with
-          | Set l -> current := l;
-          | Patch p -> current := merge p !current
-        end;
-        msg) initial_event in
-    Mut {current;event}
+    let event =
+      let f = function
+        | Set l ->
+          let msg = Patch (D.diff !current l ~eq) in
+          current := l;
+          msg
+        | Patch p as msg ->
+          current := merge p !current;
+          msg
+      in
+      React.E.map f e
+    in
+    Mut {current; event}
 
   let const x = Const x
+
+  let patch (_, _, s : 'a handle) p = s (Patch p)
+
+  let set ({current}, eq, _ as h) (y : 'a data) =
+    D.diff !current y ~eq |> patch h
 
   let map_msg (f : 'a -> 'b) : 'a msg -> 'b msg = function
     | Set l -> Set (map_data f l)
@@ -101,7 +121,8 @@ module Make(D : DATA) :
 
   let map f s =
     match s with
-    | Const x -> Const (map_data f x)
+    | Const x ->
+      Const (map_data f x)
     | Mut s ->
       let current = ref (map_data f !(s.current)) in
       let event = React.E.map (fun msg ->
@@ -111,7 +132,7 @@ module Make(D : DATA) :
             | Patch p -> current := merge p !current
           end;
           msg) s.event in
-      Mut {current ;event}
+      Mut {current; event}
 
   let value s = match s with
     | Const c -> c
@@ -121,15 +142,11 @@ module Make(D : DATA) :
     | Const _ -> React.E.never
     | Mut s -> s.event
 
-  let patch (s : 'a handle) p = s (Patch p)
-
-  let set (s : 'a handle) p = s (Set p)
-
   let fold f s acc =
     match s with
     | Const c -> React.S.const (f acc (Set c))
     | Mut s ->
-      let acc = f acc (Set (!(s.current))) in
+      let acc = f acc (Set !(s.current)) in
       React.S.fold f acc s.event
 
   let value_s (s : 'a t) : 'a data React.S.t =
@@ -139,10 +156,80 @@ module Make(D : DATA) :
       React.S.fold (fun l msg ->
           match msg with
           | Set l -> l
-          | Patch p -> merge p l) (!(s.current)) s.event
+          | Patch p -> merge p l) !(s.current) s.event
 
   let make_from_s s =
-    make_from (React.S.value s) (React.E.map (fun e -> Set e) (React.S.changes s))
+    make_from (React.S.value s)
+      (React.E.map (fun e -> Set e) (React.S.changes s))
+
+end
+
+module DiffList : sig
+  val fold :
+    ?eq    : ('a -> 'a -> bool) ->
+    'a array -> 'a array ->
+    acc    : 'acc ->
+    remove : ('acc -> int -> 'acc) ->
+    add    : ('acc -> int -> 'a -> 'acc) ->
+    'acc
+end = struct
+
+  (* http://rosettacode.org/wiki/Longest_common_subsequence *)
+  let lcs ?(eq = (=)) (x : 'a array) (y : 'a array) =
+    let longer x y = if List.(length x > length y) then x else y in
+    let n = Array.length x  and k = Array.length y  in
+    let a = Array.make_matrix (n + 1) (k + 1) [] in
+    for i = n - 1 downto 0 do
+      for j = k - 1 downto 0 do
+        a.(i).(j) <-
+          if eq x.(i) y.(j) then
+            (i, j) :: a.(i + 1).(j + 1)
+          else
+            longer a.(i).(j + 1) a.(i + 1).(j)
+      done
+    done;
+    a.(0).(0)
+
+  let rec fold_removed ?(i = 0) ?(offset = 0) l ~max ~f ~acc =
+    let rec fold j ~max ~offset ~acc =
+      if j < max then begin
+        let acc = f acc (j - offset) in
+        let offset = offset + 1 in
+        fold (j + 1) ~max ~offset ~acc
+      end
+      else
+        offset, acc
+    in
+    match l with
+    | (n, _) :: l ->
+      assert (n < max);
+      let offset, acc = fold i ~max:n ~offset ~acc
+      and i = n + 1 in
+      fold_removed ~i ~offset l ~max ~f ~acc
+    | [] ->
+      let _, acc = fold i ~max ~offset ~acc in acc
+
+  let rec fold_added ?(i = 0) l a ~f ~acc =
+    let rec g u acc j =
+      if j < u then
+        let acc = f acc j a.(j) in
+        g u acc (j + 1)
+      else
+        acc
+    in
+    match l with
+    | (_, n) :: l ->
+      let acc = g n acc i
+      and i = n + 1 in
+      fold_added ~i l a ~f ~acc
+    | [] ->
+      g (Array.length a) acc i
+
+  let fold ?eq x y ~acc ~remove ~add =
+    let l = lcs ?eq x y
+    and max = Array.length x in
+    let acc = fold_removed l ~max ~f:remove ~acc in
+    fold_added l y ~f:add ~acc
 
 end
 
@@ -259,6 +346,14 @@ module DataList = struct
       linear_merge 0 p l ~acc:[]
     else
       List.fold_left (fun l x -> merge_p x l) l p
+
+  let diff x y ~eq =
+    let x = Array.of_list x
+    and y = Array.of_list y
+    and add acc i v = I (i, v) :: acc
+    and remove acc i = R i :: acc
+    and acc = [] in
+    DiffList.fold ~eq x y ~acc ~add ~remove |> List.rev
 
 end
 
@@ -394,18 +489,61 @@ module RList = struct
 end
 
 module RMap(M : Map.S) = struct
+
   module Data = struct
+
     type 'a data = 'a M.t
-    type 'a patch = [`Add of (M.key * 'a) | `Del of M.key]
-    let merge p s =
+
+    type 'a p = [`Add of (M.key * 'a) | `Del of M.key]
+
+    type 'a patch = 'a p list
+
+    let merge_p p s =
       match p with
       | `Add (k,a) -> M.add k a s
       | `Del k -> M.remove k s
-    let map_patch f = function
+
+    let merge p acc = List.fold_left (fun acc p -> merge_p p acc) acc p
+
+    let map_p f = function
       | `Add (k,a) -> `Add (k,f a)
       | `Del k -> `Del k
+
+    let map_patch f = List.map (map_p f)
+
     let map_data f d = M.map f d
+
     let empty = M.empty
+
+    let diff x y ~eq =
+      let m =
+        let g key v w =
+          match v, w with
+          | Some v, Some w when eq v w ->
+            None
+          | Some _, Some w ->
+            Some (`U w)
+          | Some _, None ->
+            Some `D
+          | None, Some v ->
+            Some (`A v)
+          | None, None ->
+            None
+        in
+        M.merge g x y
+      and g key x acc =
+        match x with
+        | `U v ->
+          `Del key :: `Add (key, v) :: acc
+        | `D ->
+          `Del key :: acc
+        | `A v ->
+          `Add (key, v) :: acc
+      and acc = [] in
+      M.fold g m acc |> List.rev
+
   end
-  include Make (Data)
+
+  include Make(Data)
+
 end

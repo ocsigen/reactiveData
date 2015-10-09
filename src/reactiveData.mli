@@ -24,6 +24,10 @@ module type DATA = sig
   val map_patch : ('a -> 'b) -> 'a patch -> 'b patch
   val map_data : ('a -> 'b) -> 'a data -> 'b data
   val empty : 'a data
+  val diff :
+    'a data -> 'a data ->
+    eq:('a -> 'a -> bool) ->
+    'a patch
 end
 module type S = sig
   type 'a data
@@ -32,8 +36,9 @@ module type S = sig
   type 'a handle
   type 'a t
   val empty : 'a t
-  val make : 'a data -> 'a t * 'a handle
-  val make_from : 'a data -> 'a msg React.E.t -> 'a t
+  val make : ?eq:('a -> 'a -> bool) -> 'a data -> 'a t * 'a handle
+  val make_from :
+    ?eq:('a -> 'a -> bool) -> 'a data -> 'a msg React.E.t -> 'a t
   val make_from_s : 'a data React.S.t -> 'a t
   val const : 'a data -> 'a t
   val patch : 'a handle -> 'a patch -> unit
@@ -74,5 +79,6 @@ sig
   val filter : ('a -> unit) -> 'a t -> [`Not_implemented]
 end
 
-module RMap(M : Map.S) : S with type 'a data = 'a M.t
-                            and type 'a patch = [ `Add of M.key * 'a | `Del of M.key ]
+module RMap(M : Map.S) : S
+  with type 'a data = 'a M.t
+   and type 'a patch = [ `Add of M.key * 'a | `Del of M.key ] list

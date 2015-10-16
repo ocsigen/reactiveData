@@ -47,7 +47,10 @@ module type S = sig
   val map_msg : ('a -> 'b) -> 'a msg -> 'b msg
   val map : ('a -> 'b) -> 'a t -> 'b t
   val value : 'a t -> 'a data
-  val fold : ('a -> 'b msg -> 'a) -> 'b t -> 'a -> 'a React.signal
+  val fold :
+    ?eq:('a -> 'a -> bool) ->
+    ('a -> 'b msg -> 'a) ->
+    'b t -> 'a -> 'a React.signal
   val value_s : 'a t -> 'a data React.S.t
   val event : 'a t -> 'a msg React.E.t
 end
@@ -75,22 +78,18 @@ struct
 
   let empty = Const D.empty
 
-  let raw_signal ?(eq = (=)) l event =
+  let make_from ?(eq = (=)) l event =
     let f (l, e) = function
       | Set l' ->
-        l, Patch (D.diff l l' ~eq)
+        l', Patch (D.diff l l' ~eq)
       | Patch p as p' ->
         merge p l, p'
     in
-    React.S.fold f (l, Set l) event
+    React (React.S.fold f (l, Set l) event)
 
-  let make_from ?eq l event =
-    React (raw_signal ?eq l event)
-
-  let make ?(eq = (=)) l =
+  let make ?eq l =
     let event, send = React.E.create () in
-    let s = raw_signal ~eq l event in
-    React s, send
+    make_from ?eq l event, send
 
   let const x = Const x
 
@@ -121,31 +120,29 @@ struct
 
   let set (h : _ handle) l = h (Set l)
 
-  let fold f s acc =
+  let fold ?(eq = (=)) f s acc =
     match s with
     | Const c ->
       React.S.const (f acc (Set c))
     | React s ->
+      let unwrap = function `Fst x -> x | `Nth x -> x in
+      let l0 = fst (React.S.value s) in
+      let acc = f acc (Set l0) in
       let s =
         let d = let f v' v = v', v in React.S.diff f s
-        and f acc ((_, m'), (l, _)) =
+        and f acc ((l', m'), (l, _)) =
           match acc with
+          | `Fst acc when (l = l0) ->
+            `Nth (f acc m')
           | `Fst acc ->
-            let acc = f acc (Set l) in
+            let acc = f acc (Set l') in
             `Nth (f acc m')
           | `Nth acc ->
             `Nth (f acc m')
         in
         React.S.fold f (`Fst acc) d
-      and f =
-        let v = fst (React.S.value s) in
-        function
-        | `Fst acc ->
-          f acc (Set v)
-        | `Nth acc ->
-          acc
       in
-      React.S.map f s
+      React.S.map ~eq unwrap s
 
   let value_s = function
     | Const c -> React.S.const c

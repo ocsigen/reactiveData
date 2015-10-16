@@ -47,7 +47,10 @@ module type S = sig
   val map_msg : ('a -> 'b) -> 'a msg -> 'b msg
   val map : ('a -> 'b) -> 'a t -> 'b t
   val value : 'a t -> 'a data
-  val fold : ('a -> 'b msg -> 'a) -> 'b t -> 'a -> 'a React.signal
+  val fold :
+    ?eq:('a -> 'a -> bool) ->
+    ('a -> 'b msg -> 'a) ->
+    'b t -> 'a -> 'a React.signal
   val value_s : 'a t -> 'a data React.S.t
   val event : 'a t -> 'a msg React.E.t
 end

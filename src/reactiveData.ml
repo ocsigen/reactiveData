@@ -39,7 +39,8 @@ module type S = sig
   val make : ?eq:('a -> 'a -> bool) -> 'a data -> 'a t * 'a handle
   val make_from :
     ?eq:('a -> 'a -> bool) -> 'a data -> 'a msg React.E.t -> 'a t
-  val make_from_s : 'a data React.S.t -> 'a t
+  val make_from_s :
+    ?eq:('a -> 'a -> bool) -> 'a data React.S.t -> 'a t
   val const : 'a data -> 'a t
   val patch : 'a handle -> 'a patch -> unit
   val set   : 'a handle -> 'a data -> unit
@@ -66,101 +67,96 @@ struct
     | Patch of 'a patch
     | Set of 'a data
 
-  type 'a mut = {
-    current : 'a data ref;
-    event   : 'a msg React.E.t;
-  }
-
   type 'a t =
     | Const of 'a data
-    | Mut of 'a mut
+    | React of ('a data * 'a msg) React.S.t
 
-  type 'a handle =
-    'a mut * ('a -> 'a -> bool) * (?step:React.step -> 'a msg -> unit)
+  type 'a handle = (?step:React.step -> 'a msg -> unit)
 
   let empty = Const D.empty
 
-  let make ?(eq = (=)) l =
-    let initial_event,send = React.E.create () in
-    let current = ref l in
-    let event = React.E.map (fun msg ->
-        begin match msg with
-          | Set l -> current := l;
-          | Patch p -> current := merge p !current
-        end;
-        msg) initial_event in
-    let r = {current; event} in
-    (Mut r : _ t), ((r, eq, send) : _ handle)
-
-  let make_from ?(eq = (=)) l e =
-    let current = ref l in
-    let event =
-      let f = function
-        | Set l ->
-          let msg = Patch (D.diff !current l ~eq) in
-          current := l;
-          msg
-        | Patch p as msg ->
-          current := merge p !current;
-          msg
-      in
-      React.E.map f e
+  let raw_signal ?(eq = (=)) l event =
+    let f (l, e) = function
+      | Set l' ->
+        l, Patch (D.diff l l' ~eq)
+      | Patch p as p' ->
+        merge p l, p'
     in
-    Mut {current; event}
+    React.S.fold f (l, Set l) event
+
+  let make_from ?eq l event =
+    React (raw_signal ?eq l event)
+
+  let make ?(eq = (=)) l =
+    let event, send = React.E.create () in
+    let s = raw_signal ~eq l event in
+    React s, send
 
   let const x = Const x
-
-  let patch (_, _, s : 'a handle) p = s (Patch p)
-
-  let set ({current}, eq, _ as h) (y : 'a data) =
-    D.diff !current y ~eq |> patch h
 
   let map_msg (f : 'a -> 'b) : 'a msg -> 'b msg = function
     | Set l -> Set (map_data f l)
     | Patch p -> Patch (map_patch f p)
 
+  let value = function
+    | Const c -> c
+    | React s -> fst (React.S.value s)
+
   let map f s =
     match s with
     | Const x ->
       Const (map_data f x)
-    | Mut s ->
-      let current = ref (map_data f !(s.current)) in
-      let event = React.E.map (fun msg ->
-          let msg = map_msg f msg in
-          begin match msg with
-            | Set l -> current := l;
-            | Patch p -> current := merge p !current
-          end;
-          msg) s.event in
-      Mut {current; event}
-
-  let value s = match s with
-    | Const c -> c
-    | Mut s -> !(s.current)
+    | React s ->
+      let f (l, m) = map_data f l, map_msg f m in
+      React (React.S.map f s)
 
   let event s = match s with
-    | Const _ -> React.E.never
-    | Mut s -> s.event
+    | Const _ ->
+      React.E.never
+    | React e ->
+      let f (_, p) _ = p in
+      React.S.diff f e
+
+  let patch (h : _ handle) p = h (Patch p)
+
+  let set (h : _ handle) l = h (Set l)
 
   let fold f s acc =
     match s with
-    | Const c -> React.S.const (f acc (Set c))
-    | Mut s ->
-      let acc = f acc (Set !(s.current)) in
-      React.S.fold f acc s.event
+    | Const c ->
+      React.S.const (f acc (Set c))
+    | React s ->
+      let s =
+        let d = let f v' v = v', v in React.S.diff f s
+        and f acc ((_, m'), (l, _)) =
+          match acc with
+          | `Fst acc ->
+            let acc = f acc (Set l) in
+            `Nth (f acc m')
+          | `Nth acc ->
+            `Nth (f acc m')
+        in
+        React.S.fold f (`Fst acc) d
+      and f =
+        let v = fst (React.S.value s) in
+        function
+        | `Fst acc ->
+          f acc (Set v)
+        | `Nth acc ->
+          acc
+      in
+      React.S.map f s
 
-  let value_s (s : 'a t) : 'a data React.S.t =
-    match s with
+  let value_s = function
     | Const c -> React.S.const c
-    | Mut s ->
-      React.S.fold (fun l msg ->
-          match msg with
-          | Set l -> l
-          | Patch p -> merge p l) !(s.current) s.event
+    | React s -> React.S.Pair.fst s
 
-  let make_from_s s =
-    make_from (React.S.value s)
-      (React.E.map (fun e -> Set e) (React.S.changes s))
+  let make_from_s ?(eq = (=)) signal =
+    let event =
+      let f l' l = Patch (D.diff l l' ~eq) in
+      React.S.diff f signal
+    and v = React.S.value signal in
+    make_from ~eq v event
 
 end
 

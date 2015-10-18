@@ -24,10 +24,8 @@ module type DATA = sig
   val map_patch : ('a -> 'b) -> 'a patch -> 'b patch
   val map_data : ('a -> 'b) -> 'a data -> 'b data
   val empty : 'a data
-  val diff :
-    'a data -> 'a data ->
-    eq:('a -> 'a -> bool) ->
-    'a patch
+  val eq : ('a -> 'a -> bool) -> 'a data -> 'a data -> bool
+  val diff : 'a data -> 'a data -> eq:('a -> 'a -> bool) -> 'a patch
 end
 module type S = sig
   type 'a data
@@ -45,7 +43,7 @@ module type S = sig
   val patch : 'a handle -> 'a patch -> unit
   val set   : 'a handle -> 'a data -> unit
   val map_msg : ('a -> 'b) -> 'a msg -> 'b msg
-  val map : ('a -> 'b) -> 'a t -> 'b t
+  val map : ?eq:('b -> 'b -> bool) -> ('a -> 'b) -> 'a t -> 'b t
   val value : 'a t -> 'a data
   val fold :
     ?eq:('a -> 'a -> bool) ->
@@ -72,7 +70,7 @@ struct
 
   type 'a t =
     | Const of 'a data
-    | React of ('a data * 'a msg) React.S.t
+    | React of ('a -> 'a -> bool) * ('a data * 'a msg) React.S.t
 
   type 'a handle = (?step:React.step -> 'a msg -> unit)
 
@@ -85,7 +83,7 @@ struct
       | Patch p as p' ->
         merge p l, p'
     in
-    React (React.S.fold f (l, Set l) event)
+    React (eq, React.S.fold f (l, Set l) event)
 
   let make ?eq l =
     let event, send = React.E.create () in
@@ -99,20 +97,20 @@ struct
 
   let value = function
     | Const c -> c
-    | React s -> fst (React.S.value s)
+    | React (_, s) -> fst (React.S.value s)
 
-  let map f s =
+  let map ?(eq = (=)) f s =
     match s with
     | Const x ->
       Const (map_data f x)
-    | React s ->
+    | React (_, s) ->
       let f (l, m) = map_data f l, map_msg f m in
-      React (React.S.map f s)
+      React (eq, React.S.map f s)
 
   let event s = match s with
     | Const _ ->
       React.E.never
-    | React e ->
+    | React (_, e) ->
       let f (_, p) _ = p in
       React.S.diff f e
 
@@ -120,11 +118,21 @@ struct
 
   let set (h : _ handle) l = h (Set l)
 
+  (* TODO: use ppx_deriving? *)
+
+  let fst_nth_eq eq x y =
+    match x, y with
+    | `Fst x, `Fst y
+    | `Nth x, `Nth y ->
+      eq x y
+    | _, _ ->
+      false
+
   let fold ?(eq = (=)) f s acc =
     match s with
     | Const c ->
       React.S.const (f acc (Set c))
-    | React s ->
+    | React (eq', s) ->
       let unwrap = function `Fst x -> x | `Nth x -> x in
       let l0 = fst (React.S.value s) in
       let acc = f acc (Set l0) in
@@ -132,21 +140,21 @@ struct
         let d = let f v' v = v', v in React.S.diff f s
         and f acc ((l', m'), (l, _)) =
           match acc with
-          | `Fst acc when (l = l0) ->
+          | `Fst acc when (D.eq eq' l l0) ->
             `Nth (f acc m')
           | `Fst acc ->
             let acc = f acc (Set l') in
             `Nth (f acc m')
           | `Nth acc ->
             `Nth (f acc m')
-        in
-        React.S.fold f (`Fst acc) d
+        and eq = fst_nth_eq eq in
+        React.S.fold ~eq f (`Fst acc) d
       in
       React.S.map ~eq unwrap s
 
   let value_s = function
     | Const c -> React.S.const c
-    | React s -> React.S.Pair.fst s
+    | React (_, s) -> React.S.Pair.fst s
 
   let make_from_s ?(eq = (=)) signal =
     let event =
@@ -167,10 +175,19 @@ module DiffList : sig
     'acc
 end = struct
 
+  let rec ge_length x y =
+    match x, y with
+    | _ :: x, _ :: y ->
+      ge_length x y
+    | _, [] ->
+      true
+    | [], _ :: _ ->
+      false
+
   (* http://rosettacode.org/wiki/Longest_common_subsequence *)
   let lcs ?(eq = (=)) (x : 'a array) (y : 'a array) =
-    let longer x y = if List.(length x > length y) then x else y in
-    let n = Array.length x  and k = Array.length y  in
+    let longer x y = if ge_length x y then x else y in
+    let n = Array.length x and k = Array.length y  in
     let a = Array.make_matrix (n + 1) (k + 1) [] in
     for i = n - 1 downto 0 do
       for j = k - 1 downto 0 do
@@ -340,6 +357,17 @@ module DataList = struct
     else
       List.fold_left (fun l x -> merge_p x l) l p
 
+  let rec eq eq' l1 l2 =
+    match l1, l2 with
+    | x1 :: l1, x2 :: l2 when eq' x1 x2 ->
+      eq eq' l1 l2
+    | [], [] ->
+      true
+    | _ :: _ , _ :: _
+    | _ :: _ , []
+    | []     , _ :: _ ->
+      false
+
   let diff x y ~eq =
     let x = Array.of_list x
     and y = Array.of_list y
@@ -507,6 +535,8 @@ module RMap(M : Map.S) = struct
     let map_data f d = M.map f d
 
     let empty = M.empty
+
+    let eq f = M.equal f
 
     let diff x y ~eq =
       let m =

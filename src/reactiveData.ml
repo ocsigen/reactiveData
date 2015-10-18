@@ -168,7 +168,7 @@ end
 module DiffList : sig
   val fold :
     ?eq    : ('a -> 'a -> bool) ->
-    'a array -> 'a array ->
+    'a list -> 'a list ->
     acc    : 'acc ->
     remove : ('acc -> int -> 'acc) ->
     add    : ('acc -> int -> 'a -> 'acc) ->
@@ -184,21 +184,38 @@ end = struct
     | [], _ :: _ ->
       false
 
-  (* http://rosettacode.org/wiki/Longest_common_subsequence *)
-  let lcs ?(eq = (=)) (x : 'a array) (y : 'a array) =
-    let longer x y = if ge_length x y then x else y in
-    let n = Array.length x and k = Array.length y  in
-    let a = Array.make_matrix (n + 1) (k + 1) [] in
-    for i = n - 1 downto 0 do
-      for j = k - 1 downto 0 do
-        a.(i).(j) <-
-          if eq x.(i) y.(j) then
-            (i, j) :: a.(i + 1).(j + 1)
-          else
-            longer a.(i).(j + 1) a.(i + 1).(j)
-      done
-    done;
-    a.(0).(0)
+  let mem l =
+    let h = Hashtbl.create 1024 in
+    List.iter (fun x -> Hashtbl.add h x ()) l;
+    Hashtbl.mem h
+
+  let lcs ?(eq = (=)) ?(acc = []) lx ly =
+    let h = Hashtbl.create 1024
+    and memx = mem lx
+    and memy = mem ly in
+    let rec lcs lx ox ly oy =
+      try Hashtbl.find h (lx, ly) with
+      | Not_found ->
+        let result =
+          match lx, ly with
+          | [], _
+          | _, [] ->
+            acc
+          | x :: xs, y :: ys when eq x y ->
+            (ox, oy) :: lcs xs (ox + 1) ys (oy + 1)
+          | x :: lx, ly when not (memy x) ->
+            lcs lx (ox + 1) ly oy
+          | lx, y :: ly when not (memx y) ->
+            lcs lx ox ly (oy + 1)
+          | _ :: lx', _ :: ly' ->
+            let a = lcs lx' (ox + 1) ly oy
+            and b = lcs lx ox ly' (oy + 1) in
+            if ge_length a b then a else b
+        in
+        Hashtbl.add h (lx, ly) result;
+        result
+    and acc = [] in
+    lcs lx 0 ly 0
 
   let rec fold_removed ?(i = 0) ?(offset = 0) l ~max ~f ~acc =
     let rec fold j ~max ~offset ~acc =
@@ -237,9 +254,9 @@ end = struct
 
   let fold ?eq x y ~acc ~remove ~add =
     let l = lcs ?eq x y
-    and max = Array.length x in
+    and max = List.length x in
     let acc = fold_removed l ~max ~f:remove ~acc in
-    fold_added l y ~f:add ~acc
+    fold_added l (Array.of_list y) ~f:add ~acc
 
 end
 
@@ -369,9 +386,7 @@ module DataList = struct
       false
 
   let diff x y ~eq =
-    let x = Array.of_list x
-    and y = Array.of_list y
-    and add acc i v = I (i, v) :: acc
+    let add acc i v = I (i, v) :: acc
     and remove acc i = R i :: acc
     and acc = [] in
     DiffList.fold ~eq x y ~acc ~add ~remove |> List.rev

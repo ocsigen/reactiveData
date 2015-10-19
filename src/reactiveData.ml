@@ -165,6 +165,13 @@ struct
 
 end
 
+let rec list_rev ?(acc = []) = function
+    | h :: t ->
+      let acc = h :: acc in
+      list_rev ~acc t
+    | [] ->
+      acc
+
 module DiffList : sig
   val fold :
     ?eq    : ('a -> 'a -> bool) ->
@@ -175,25 +182,16 @@ module DiffList : sig
     'acc
 end = struct
 
-  let rec ge_length x y =
-    match x, y with
-    | _ :: x, _ :: y ->
-      ge_length x y
-    | _, [] ->
-      true
-    | [], _ :: _ ->
-      false
-
   let mem l =
     let h = Hashtbl.create 1024 in
     List.iter (fun x -> Hashtbl.add h x ()) l;
     Hashtbl.mem h
 
-  let lcs ?(eq = (=)) ?(acc = []) lx ly =
+  let lcs ?(eq = (=)) lx ly =
     let h = Hashtbl.create 1024
     and memx = mem lx
     and memy = mem ly in
-    let rec lcs lx ox ly oy =
+    let rec lcs lx ox ly oy ~acc ~left =
       try Hashtbl.find h (lx, ly) with
       | Not_found ->
         let result =
@@ -201,21 +199,22 @@ end = struct
           | [], _
           | _, [] ->
             acc
-          | x :: xs, y :: ys when eq x y ->
-            (ox, oy) :: lcs xs (ox + 1) ys (oy + 1)
+          | x :: lx, y :: ly when eq x y ->
+            let acc = (ox, oy) :: acc in
+            lcs lx (ox + 1) ly (oy + 1) ~acc ~left
           | x :: lx, ly when not (memy x) ->
-            lcs lx (ox + 1) ly oy
+            lcs lx (ox + 1) ly oy ~acc ~left
           | lx, y :: ly when not (memx y) ->
-            lcs lx ox ly (oy + 1)
-          | _ :: lx', _ :: ly' ->
-            let a = lcs lx' (ox + 1) ly oy
-            and b = lcs lx ox ly' (oy + 1) in
-            if ge_length a b then a else b
+            lcs lx ox ly (oy + 1) ~acc ~left
+          | _ :: lx, _ when left ->
+            lcs lx (ox + 1) ly oy ~acc ~left:false
+          | _, _ :: ly ->
+            lcs lx ox ly (oy + 1) ~acc ~left:true
         in
         Hashtbl.add h (lx, ly) result;
         result
-    and acc = [] in
-    lcs lx 0 ly 0
+    and acc = [] and left = true in
+    lcs lx 0 ly 0 ~acc ~left |> list_rev
 
   let rec fold_removed ?(i = 0) ?(offset = 0) l ~max ~f ~acc =
     let rec fold j ~max ~offset ~acc =
@@ -389,7 +388,7 @@ module DataList = struct
     let add acc i v = I (i, v) :: acc
     and remove acc i = R i :: acc
     and acc = [] in
-    DiffList.fold ~eq x y ~acc ~add ~remove |> List.rev
+    DiffList.fold ~eq x y ~acc ~add ~remove |> list_rev
 
 end
 

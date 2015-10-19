@@ -24,7 +24,7 @@ module type DATA = sig
   val map_patch : ('a -> 'b) -> 'a patch -> 'b patch
   val map_data : ('a -> 'b) -> 'a data -> 'b data
   val empty : 'a data
-  val eq : ('a -> 'a -> bool) -> 'a data -> 'a data -> bool
+  val equal : ('a -> 'a -> bool) -> 'a data -> 'a data -> bool
   val diff : 'a data -> 'a data -> eq:('a -> 'a -> bool) -> 'a patch
 end
 module type S = sig
@@ -140,7 +140,7 @@ struct
         let d = let f v' v = v', v in React.S.diff f s
         and f acc ((l', m'), (l, _)) =
           match acc with
-          | `Fst acc when (D.eq eq' l l0) ->
+          | `Fst acc when (D.equal eq' l l0) ->
             `Nth (f acc m')
           | `Fst acc ->
             let acc = f acc (Set l') in
@@ -374,10 +374,10 @@ module DataList = struct
     else
       List.fold_left (fun l x -> merge_p x l) l p
 
-  let rec eq eq' l1 l2 =
+  let rec equal f l1 l2 =
     match l1, l2 with
-    | x1 :: l1, x2 :: l2 when eq' x1 x2 ->
-      eq eq' l1 l2
+    | x1 :: l1, x2 :: l2 when f x1 x2 ->
+      equal f l1 l2
     | [], [] ->
       true
     | _ :: _ , _ :: _
@@ -551,7 +551,7 @@ module RMap(M : Map.S) = struct
 
     let empty = M.empty
 
-    let eq f = M.equal f
+    let equal f = M.equal f
 
     let diff x y ~eq =
       let m =

@@ -24,7 +24,7 @@ module type DATA = sig
   val map_patch : ('a -> 'b) -> 'a patch -> 'b patch
   val map_data : ('a -> 'b) -> 'a data -> 'b data
   val empty : 'a data
-  val eq : ('a -> 'a -> bool) -> 'a data -> 'a data -> bool
+  val equal : ('a -> 'a -> bool) -> 'a data -> 'a data -> bool
   val diff : 'a data -> 'a data -> eq:('a -> 'a -> bool) -> 'a patch
 end
 module type S = sig

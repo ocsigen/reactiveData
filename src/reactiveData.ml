@@ -165,100 +165,6 @@ struct
 
 end
 
-let rec list_rev ?(acc = []) = function
-    | h :: t ->
-      let acc = h :: acc in
-      list_rev ~acc t
-    | [] ->
-      acc
-
-module DiffList : sig
-  val fold :
-    ?eq    : ('a -> 'a -> bool) ->
-    'a list -> 'a list ->
-    acc    : 'acc ->
-    remove : ('acc -> int -> 'acc) ->
-    add    : ('acc -> int -> 'a -> 'acc) ->
-    'acc
-end = struct
-
-  let mem l =
-    let h = Hashtbl.create 1024 in
-    List.iter (fun x -> Hashtbl.add h x ()) l;
-    Hashtbl.mem h
-
-  let lcs ?(eq = (=)) lx ly =
-    let h = Hashtbl.create 1024
-    and memx = mem lx
-    and memy = mem ly in
-    let rec lcs lx ox ly oy ~acc ~left =
-      try Hashtbl.find h (lx, ly) with
-      | Not_found ->
-        let result =
-          match lx, ly with
-          | [], _
-          | _, [] ->
-            acc
-          | x :: lx, y :: ly when eq x y ->
-            let acc = (ox, oy) :: acc in
-            lcs lx (ox + 1) ly (oy + 1) ~acc ~left
-          | x :: lx, ly when not (memy x) ->
-            lcs lx (ox + 1) ly oy ~acc ~left
-          | lx, y :: ly when not (memx y) ->
-            lcs lx ox ly (oy + 1) ~acc ~left
-          | _ :: lx, _ when left ->
-            lcs lx (ox + 1) ly oy ~acc ~left:false
-          | _, _ :: ly ->
-            lcs lx ox ly (oy + 1) ~acc ~left:true
-        in
-        Hashtbl.add h (lx, ly) result;
-        result
-    and acc = [] and left = true in
-    lcs lx 0 ly 0 ~acc ~left |> list_rev
-
-  let rec fold_removed ?(i = 0) ?(offset = 0) l ~max ~f ~acc =
-    let rec fold j ~max ~offset ~acc =
-      if j < max then begin
-        let acc = f acc (j - offset) in
-        let offset = offset + 1 in
-        fold (j + 1) ~max ~offset ~acc
-      end
-      else
-        offset, acc
-    in
-    match l with
-    | (n, _) :: l ->
-      assert (n < max);
-      let offset, acc = fold i ~max:n ~offset ~acc
-      and i = n + 1 in
-      fold_removed ~i ~offset l ~max ~f ~acc
-    | [] ->
-      let _, acc = fold i ~max ~offset ~acc in acc
-
-  let rec fold_added ?(i = 0) l a ~f ~acc =
-    let rec g u acc j =
-      if j < u then
-        let acc = f acc j a.(j) in
-        g u acc (j + 1)
-      else
-        acc
-    in
-    match l with
-    | (_, n) :: l ->
-      let acc = g n acc i
-      and i = n + 1 in
-      fold_added ~i l a ~f ~acc
-    | [] ->
-      g (Array.length a) acc i
-
-  let fold ?eq x y ~acc ~remove ~add =
-    let l = lcs ?eq x y
-    and max = List.length x in
-    let acc = fold_removed l ~max ~f:remove ~acc in
-    fold_added l (Array.of_list y) ~f:add ~acc
-
-end
-
 module DataList = struct
   type 'a data = 'a list
   type 'a p =
@@ -384,11 +290,60 @@ module DataList = struct
     | []     , _ :: _ ->
       false
 
+  let mem l =
+    let h = Hashtbl.create 1024 in
+    List.iter (fun x -> Hashtbl.add h x ()) l;
+    Hashtbl.mem h
+
+  let fold_diff ?(eq = (=)) lx ly ~acc ~remove ~add =
+    let memx = mem lx
+    and memy = mem ly in
+    let rec f lx ly n ~acc ~left =
+      match lx, ly with
+      (* trailing elements to be removed *)
+      | x :: lx, [] ->
+        let acc = remove acc n in
+        f lx [] n ~acc ~left
+      (* trailing elements to be added *)
+      | [], y :: ly ->
+        let acc = add acc n y in
+        f [] ly (n + 1) ~acc ~left
+      (* done! *)
+      | [], [] ->
+        acc
+      (* same *)
+      | x :: lx, y :: ly when eq x y ->
+        f lx ly (n + 1) ~acc ~left
+      (* x needs to be removed for sure *)
+      | x :: lx, _ :: _ when not (memy x) ->
+        let acc = remove acc n in
+        f lx ly n ~acc ~left
+      (* y needs to be added for sure *)
+      | _ :: _, y :: ly when not (memx y) ->
+        let acc = add acc n y in
+        f lx ly (n + 1) ~acc ~left
+      (* no more certainty, ~left decides what to recur on *)
+      | _ :: lx, _ :: _ when left ->
+        let acc = remove acc n in
+        f lx ly n ~acc ~left:false
+      | _ :: _, y :: ly ->
+        let acc = add acc n y in
+        f lx ly (n + 1) ~acc ~left:true
+    in
+    f lx ly 0 ~acc ~left:true
+
+  let rec list_rev ?(acc = []) = function
+    | h :: t ->
+      let acc = h :: acc in
+      list_rev ~acc t
+    | [] ->
+      acc
+
   let diff x y ~eq =
     let add acc i v = I (i, v) :: acc
     and remove acc i = R i :: acc
     and acc = [] in
-    DiffList.fold ~eq x y ~acc ~add ~remove |> list_rev
+    fold_diff ~eq x y ~acc ~add ~remove |> list_rev
 
 end
 

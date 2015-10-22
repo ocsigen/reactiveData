@@ -206,7 +206,60 @@ module DataList = struct
       end;
       Array.to_list a
 
-  let merge p l = List.fold_left (fun l x -> merge_p x l) l p
+  (* accumulates into acc i unmodified elements from l *)
+  let rec linear_merge_fwd i l ~acc =
+    assert (i >= 0);
+    if i > 0 then
+      match l with
+      | h :: l ->
+        let acc = h :: acc in
+        linear_merge_fwd (i - 1) l ~acc
+      | [] ->
+        failwith "linear_merge_fwd"
+    else
+      l, acc
+
+  let rec linear_merge ?(acc = []) i0 p l =
+    let l, acc =
+      match p with
+      | (I (i, _) | R i | U (i, _)) :: _ when i > i0 ->
+        linear_merge_fwd (i - i0) l ~acc
+      | _ ->
+        l, acc
+    in
+    match p, l with
+    | I (i, x) :: p, _ ->
+      linear_merge ~acc i p (x :: l)
+    | R i :: p, _ :: l ->
+      linear_merge ~acc i p l
+    | R _ :: _, [] ->
+      failwith "ReactiveData.RList.linear_merge: remove from empty"
+    | U (i, x) :: p, _ :: l ->
+      linear_merge ~acc i p (x :: l)
+    | U (_, _) :: _, [] ->
+      failwith "ReactiveData.RList.linear_merge: update empty"
+    | [], l ->
+      List.rev_append acc l
+    | X (_, _) :: _, _ ->
+      failwith "ReactiveData.RList.linear_merge: X not supported"
+
+  let rec linear_mergeable ?(n = 0) p =
+    assert (n >= 0);
+    match p with
+    | (I (i, _) | R i | U (i, _)) :: p when i >= n ->
+      (* negative i's ruled out (among others) *)
+      linear_mergeable ~n:i p
+    | _ :: _ ->
+      false
+    | [] ->
+      true
+
+  let merge p l =
+    if linear_mergeable p then
+      linear_merge 0 p l
+    else
+      List.fold_left (fun l x -> merge_p x l) l p
+
 end
 
 module RList = struct

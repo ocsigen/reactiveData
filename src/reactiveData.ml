@@ -215,11 +215,11 @@ module DataList = struct
         let acc = h :: acc in
         linear_merge_fwd (i - 1) l ~acc
       | [] ->
-        failwith "linear_merge_fwd"
+        invalid_arg "invalid index"
     else
       l, acc
 
-  let rec linear_merge ?(acc = []) i0 p l =
+  let rec linear_merge i0 p l ~acc =
     let l, acc =
       match p with
       | (I (i, _) | R i | U (i, _)) :: _ when i > i0 ->
@@ -229,34 +229,34 @@ module DataList = struct
     in
     match p, l with
     | I (i, x) :: p, _ ->
-      linear_merge ~acc i p (x :: l)
+      linear_merge i p (x :: l) ~acc
     | R i :: p, _ :: l ->
-      linear_merge ~acc i p l
+      linear_merge i p l ~acc
     | R _ :: _, [] ->
-      failwith "ReactiveData.RList.linear_merge: remove from empty"
+      invalid_arg "merge: invalid index"
     | U (i, x) :: p, _ :: l ->
-      linear_merge ~acc i p (x :: l)
+      linear_merge i p (x :: l) ~acc
     | U (_, _) :: _, [] ->
-      failwith "ReactiveData.RList.linear_merge: update empty"
+      invalid_arg "merge: invalid index"
     | [], l ->
       List.rev_append acc l
     | X (_, _) :: _, _ ->
-      failwith "ReactiveData.RList.linear_merge: X not supported"
+      failwith "linear_merge: X not supported"
 
-  let rec linear_mergeable ?(n = 0) p =
+  let rec linear_mergeable p ~n =
     assert (n >= 0);
     match p with
     | (I (i, _) | R i | U (i, _)) :: p when i >= n ->
       (* negative i's ruled out (among others) *)
-      linear_mergeable ~n:i p
+      linear_mergeable p ~n:i
     | _ :: _ ->
       false
     | [] ->
       true
 
   let merge p l =
-    if linear_mergeable p then
-      linear_merge 0 p l
+    if linear_mergeable p ~n:0 then
+      linear_merge 0 p l ~acc:[]
     else
       List.fold_left (fun l x -> merge_p x l) l p
 

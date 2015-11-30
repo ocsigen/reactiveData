@@ -25,7 +25,7 @@ module type DATA = sig
   val map_data : ('a -> 'b) -> 'a data -> 'b data
   val empty : 'a data
   val equal : ('a -> 'a -> bool) -> 'a data -> 'a data -> bool
-  val diff : 'a data -> 'a data -> eq:('a -> 'a -> bool) -> 'a patch
+  val diff : eq:('a -> 'a -> bool) -> 'a data -> 'a data -> 'a patch
 end
 module type S = sig
   type 'a data
@@ -79,7 +79,7 @@ struct
   let make_from ?(eq = (=)) l event =
     let f (l, e) = function
       | Set l' ->
-        l', Patch (D.diff l l' ~eq)
+        l', Patch (D.diff ~eq l l')
       | Patch p as p' ->
         merge p l, p'
     in
@@ -158,7 +158,7 @@ struct
 
   let make_from_s ?(eq = (=)) signal =
     let event =
-      let f l' l = Patch (D.diff l l' ~eq) in
+      let f l' l = Patch (D.diff ~eq l l') in
       React.S.diff f signal
     and v = React.S.value signal in
     make_from ~eq v event
@@ -226,35 +226,35 @@ module DataList = struct
       Array.to_list a
 
   (* accumulates into acc i unmodified elements from l *)
-  let rec linear_merge_fwd i l ~acc =
+  let rec linear_merge_fwd ~acc i l =
     assert (i >= 0);
     if i > 0 then
       match l with
       | h :: l ->
         let acc = h :: acc in
-        linear_merge_fwd (i - 1) l ~acc
+        linear_merge_fwd ~acc (i - 1) l
       | [] ->
         invalid_arg "invalid index"
     else
       l, acc
 
-  let rec linear_merge i0 p l ~acc =
+  let rec linear_merge ~acc i0 p l =
     let l, acc =
       match p with
       | (I (i, _) | R i | U (i, _)) :: _ when i > i0 ->
-        linear_merge_fwd (i - i0) l ~acc
+        linear_merge_fwd ~acc (i - i0) l
       | _ ->
         l, acc
     in
     match p, l with
     | I (i, x) :: p, _ ->
-      linear_merge i p (x :: l) ~acc
+      linear_merge ~acc i p (x :: l)
     | R i :: p, _ :: l ->
-      linear_merge i p l ~acc
+      linear_merge ~acc i p l
     | R _ :: _, [] ->
       invalid_arg "merge: invalid index"
     | U (i, x) :: p, _ :: l ->
-      linear_merge i p (x :: l) ~acc
+      linear_merge ~acc i p (x :: l)
     | U (_, _) :: _, [] ->
       invalid_arg "merge: invalid index"
     | [], l ->
@@ -262,20 +262,20 @@ module DataList = struct
     | X (_, _) :: _, _ ->
       failwith "linear_merge: X not supported"
 
-  let rec linear_mergeable p ~n =
+  let rec linear_mergeable ~n p =
     assert (n >= 0);
     match p with
     | (I (i, _) | R i | U (i, _)) :: p when i >= n ->
       (* negative i's ruled out (among others) *)
-      linear_mergeable p ~n:i
+      linear_mergeable ~n:i p
     | _ :: _ ->
       false
     | [] ->
       true
 
   let merge p l =
-    if linear_mergeable p ~n:0 then
-      linear_merge 0 p l ~acc:[]
+    if linear_mergeable ~n:0 p then
+      linear_merge ~acc:[] 0 p l
     else
       List.fold_left (fun l x -> merge_p x l) l p
 
@@ -295,42 +295,42 @@ module DataList = struct
     List.iter (fun x -> Hashtbl.add h x ()) l;
     Hashtbl.mem h
 
-  let fold_diff ?(eq = (=)) lx ly ~acc ~remove ~add =
+  let fold_diff ?(eq = (=)) ~acc ~remove ~add lx ly =
     let memx = mem lx
     and memy = mem ly in
-    let rec f lx ly n ~acc ~left =
+    let rec f ~acc ~left lx ly n =
       match lx, ly with
       (* trailing elements to be removed *)
       | x :: lx, [] ->
         let acc = remove acc n in
-        f lx [] n ~acc ~left
+        f ~acc ~left lx [] n
       (* trailing elements to be added *)
       | [], y :: ly ->
         let acc = add acc n y in
-        f [] ly (n + 1) ~acc ~left
+        f ~acc ~left [] ly (n + 1)
       (* done! *)
       | [], [] ->
         acc
       (* same *)
       | x :: lx, y :: ly when eq x y ->
-        f lx ly (n + 1) ~acc ~left
+        f ~acc ~left lx ly (n + 1)
       (* x needs to be removed for sure *)
       | x :: lx, _ :: _ when not (memy x) ->
         let acc = remove acc n in
-        f lx ly n ~acc ~left
+        f ~acc ~left lx ly n
       (* y needs to be added for sure *)
       | _ :: _, y :: ly when not (memx y) ->
         let acc = add acc n y in
-        f lx ly (n + 1) ~acc ~left
+        f ~acc ~left lx ly (n + 1)
       (* no more certainty, ~left decides what to recur on *)
       | _ :: lx, _ :: _ when left ->
         let acc = remove acc n in
-        f lx ly n ~acc ~left:false
+        f ~acc ~left:false lx ly n
       | _ :: _, y :: ly ->
         let acc = add acc n y in
-        f lx ly (n + 1) ~acc ~left:true
+        f ~acc ~left:true lx ly (n + 1)
     in
-    f lx ly 0 ~acc ~left:true
+    f ~acc ~left:true lx ly 0
 
   let rec list_rev ?(acc = []) = function
     | h :: t ->
@@ -339,11 +339,11 @@ module DataList = struct
     | [] ->
       acc
 
-  let diff x y ~eq =
+  let diff ~eq x y =
     let add acc i v = I (i, v) :: acc
     and remove acc i = R i :: acc
     and acc = [] in
-    fold_diff ~eq x y ~acc ~add ~remove |> list_rev
+    fold_diff ~eq ~acc ~add ~remove x y |> list_rev
 
 end
 
@@ -507,7 +507,7 @@ module RMap(M : Map.S) = struct
 
     let equal f = M.equal f
 
-    let diff x y ~eq =
+    let diff ~eq x y =
       let m =
         let g key v w =
           match v, w with

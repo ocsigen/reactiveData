@@ -156,12 +156,15 @@ struct
     | Const c -> React.S.const c
     | React (_, s) -> React.S.Pair.fst s
 
-  let make_from_s ?(eq = (=)) signal =
-    let event =
-      let f l' l = Patch (D.diff ~eq l l') in
-      React.S.diff f signal
-    and v = React.S.value signal in
-    make_from ~eq v event
+  let make_from_s ?(eq = (=)) (signal : 'a data React.S.t) =
+    let signal : ('a data * 'a msg) React.S.t =
+      let e =
+        let f l' l = l', Patch (D.diff ~eq l l') in
+        React.S.diff f signal
+      and v = let l = React.S.value signal in l, Set l in
+      React.S.hold v e
+    in
+    React (eq, signal)
 
 end
 

@@ -114,39 +114,31 @@ struct
 
   let set (h : _ handle) l = h (Set l)
 
-  let fst_nth_eq eq x y =
-    match x, y with
-    | `Fst x, `Fst y
-    | `Nth x, `Nth y ->
-      eq x y
-    | _, _ ->
-      false
-
   let fold ?(eq = (=)) f s acc =
     match s with
     | Const c ->
       React.S.const (f acc (Set c))
     | React (eq', s, e) ->
-      let unwrap = function `Fst x -> x | `Nth x -> x in
       let l0 = React.S.value s in
       let acc = f acc (Set l0) in
+
       let make_pair v' v = v', v in
-      let s =
-        let diff_s = React.S.diff make_pair s in
-        let events = React.E.l2 make_pair diff_s e in
-        let f acc ((l', l), m') =
-          match acc with
-          | `Fst acc when (D.equal eq' l l0) ->
-            `Nth (f acc m')
-          | `Fst acc ->
-            let acc = f acc (Set l') in
-            `Nth (f acc m')
-          | `Nth acc ->
-            `Nth (f acc m')
-        and eq = fst_nth_eq eq in
-        React.S.fold ~eq f (`Fst acc) events
+      let diff_s = React.S.diff make_pair s in
+      let events = React.E.l2 make_pair diff_s e in
+
+      let first = ref true in
+      let f acc ((l', l), m') =
+        let acc =
+          if !first then begin
+            first := false ;
+            if D.equal eq' l l0 then acc
+            else f acc (Set l')
+          end
+          else acc
+        in
+        f acc m'
       in
-      React.S.map ~eq unwrap s
+      React.S.fold ~eq f acc events
 
   let value_s = function
     | Const c -> React.S.const c

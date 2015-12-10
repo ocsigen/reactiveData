@@ -77,7 +77,7 @@ struct
   let empty = Const D.empty
 
   let make_from ?(eq = (=)) l event =
-    let f (l, e) = function
+    let f (l, _e) = function
       | Set l' ->
         l', Patch (D.diff ~eq l l')
       | Patch p as p' ->
@@ -195,7 +195,7 @@ module DataList = struct
     | R i' ->
       let i = if i' < 0 then List.length l + i' else i' in
       let rec aux acc n l = match n,l with
-        | 0,x::l -> List.rev_append acc l
+        | 0,_x::l -> List.rev_append acc l
         | _,[] -> failwith "ReactiveData.Rlist.merge"
         | n,x::xs -> aux (x::acc) (pred n) xs
       in aux [] i l
@@ -302,7 +302,7 @@ module DataList = struct
     let rec f ~acc ~left lx ly n =
       match lx, ly with
       (* trailing elements to be removed *)
-      | x :: lx, [] ->
+      | _x :: lx, [] ->
         let acc = remove acc n in
         f ~acc ~left lx [] n
       (* trailing elements to be added *)
@@ -441,12 +441,12 @@ module RList = struct
           Patch (p1 @ p2)
         | Some (Patch p1), None -> Patch (update_patch1 p1)
         | None, Some (Patch p2) -> Patch (update_patch2 p2)
-        | Some (Patch p1), Some (Set s2) ->
+        | Some (Patch _p1), Some (Set s2) ->
           let s1 = value x in
           size_with_set size1 s1;
           size_with_set size2 s2;
           Set(s1 @ s2)
-        | Some (Set s1), Some (Patch p2) ->
+        | Some (Set s1), Some (Patch _p2) ->
           size_with_set size1 s1;
           let s2 = value y in
           size_with_set size2 s2;
@@ -501,7 +501,7 @@ module RMap(M : Map.S) = struct
 
     let diff ~eq x y =
       let m =
-        let g key v w =
+        let g _key v w =
           match v, w with
           | Some v, Some w when eq v w ->
             None

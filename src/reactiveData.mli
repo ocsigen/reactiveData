@@ -17,16 +17,6 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *)
 
-module type DATA = sig
-  type 'a data
-  type 'a patch
-  val merge : 'a patch -> 'a data -> 'a data
-  val map_patch : ('a -> 'b) -> 'a patch -> 'b patch
-  val map_data : ('a -> 'b) -> 'a data -> 'b data
-  val empty : 'a data
-  val equal : ('a -> 'a -> bool) -> 'a data -> 'a data -> bool
-  val diff : eq:('a -> 'a -> bool) -> 'a data -> 'a data -> 'a patch
-end
 module type S = sig
   type 'a data
   type 'a patch
@@ -53,17 +43,17 @@ module type S = sig
   val event : 'a t -> 'a msg React.E.t
 end
 
-module Make(D : DATA) : S with type 'a data = 'a D.data
-                           and type 'a patch = 'a D.patch
-module RList :
-sig
+module RList : sig
+
   type 'a p =
       I of int * 'a
     | R of int
     | U of int * 'a
     | X of int * int
-  include S with type 'a data = 'a list
-             and type 'a patch = 'a p list
+
+  include S
+    with type 'a data = 'a list
+     and type 'a patch = 'a p list
 
   val nil : 'a t
   val append : 'a -> 'a handle -> unit
@@ -82,3 +72,19 @@ end
 module RMap(M : Map.S) : S
   with type 'a data = 'a M.t
    and type 'a patch = [ `Add of M.key * 'a | `Del of M.key ] list
+
+
+module type DATA = sig
+  type 'a data
+  type 'a patch
+  val merge : 'a patch -> 'a data -> 'a data
+  val map_patch : ('a -> 'b) -> 'a patch -> 'b patch
+  val map_data : ('a -> 'b) -> 'a data -> 'b data
+  val empty : 'a data
+  val equal : ('a -> 'a -> bool) -> 'a data -> 'a data -> bool
+  val diff : eq:('a -> 'a -> bool) -> 'a data -> 'a data -> 'a patch
+end
+
+module Make(D : DATA) : S
+  with type 'a data = 'a D.data
+   and type 'a patch = 'a D.patch

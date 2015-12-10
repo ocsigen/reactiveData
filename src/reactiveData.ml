@@ -70,20 +70,18 @@ struct
 
   type 'a t =
     | Const of 'a data
-    | React of ('a -> 'a -> bool) * ('a data * 'a msg) React.S.t
+    | React of ('a -> 'a -> bool) * 'a data React.S.t * 'a msg React.E.t
 
   type 'a handle = (?step:React.step -> 'a msg -> unit)
 
   let empty = Const D.empty
 
   let make_from ?(eq = (=)) l event =
-    let f (l, _e) = function
-      | Set l' ->
-        l', Patch (D.diff ~eq l l')
-      | Patch p as p' ->
-        merge p l, p'
+    let f l = function
+      | Set l' -> l'
+      | Patch p -> merge p l
     in
-    React (eq, React.S.fold f (l, Set l) event)
+    React (eq, React.S.fold ~eq:(D.equal eq) f l event, event)
 
   let make ?eq l =
     let event, send = React.E.create () in
@@ -97,22 +95,20 @@ struct
 
   let value = function
     | Const c -> c
-    | React (_, s) -> fst (React.S.value s)
+    | React (_, s, _) -> React.S.value s
 
   let map ?(eq = (=)) f s =
     match s with
     | Const x ->
       Const (map_data f x)
-    | React (_, s) ->
-      let f (l, m) = map_data f l, map_msg f m in
-      React (eq, React.S.map f s)
+    | React (_, s, e) ->
+      let s =  React.S.map (map_data f) s in
+      let e = React.E.map (map_msg f) e in
+      React (eq, s, e)
 
   let event s = match s with
-    | Const _ ->
-      React.E.never
-    | React (_, e) ->
-      let f (_, p) _ = p in
-      React.S.diff f e
+    | Const _ -> React.E.never
+    | React (_, _, e) -> e
 
   let patch (h : _ handle) p = h (Patch p)
 
@@ -130,13 +126,15 @@ struct
     match s with
     | Const c ->
       React.S.const (f acc (Set c))
-    | React (eq', s) ->
+    | React (eq', s, e) ->
       let unwrap = function `Fst x -> x | `Nth x -> x in
-      let l0 = fst (React.S.value s) in
+      let l0 = React.S.value s in
       let acc = f acc (Set l0) in
+      let make_pair v' v = v', v in
       let s =
-        let d = let f v' v = v', v in React.S.diff f s
-        and f acc ((l', m'), (l, _)) =
+        let diff_s = React.S.diff make_pair s in
+        let events = React.E.l2 make_pair diff_s e in
+        let f acc ((l', l), m') =
           match acc with
           | `Fst acc when (D.equal eq' l l0) ->
             `Nth (f acc m')
@@ -146,23 +144,18 @@ struct
           | `Nth acc ->
             `Nth (f acc m')
         and eq = fst_nth_eq eq in
-        React.S.fold ~eq f (`Fst acc) d
+        React.S.fold ~eq f (`Fst acc) events
       in
       React.S.map ~eq unwrap s
 
   let value_s = function
     | Const c -> React.S.const c
-    | React (_, s) -> React.S.Pair.fst s
+    | React (_, s, _) -> s
 
   let make_from_s ?(eq = (=)) (signal : 'a data React.S.t) =
-    let signal : ('a data * 'a msg) React.S.t =
-      let e =
-        let f l' l = l', Patch (D.diff ~eq l l') in
-        React.S.diff f signal
-      and v = let l = React.S.value signal in l, Set l in
-      React.S.hold v e
-    in
-    React (eq, signal)
+    let f l' l = Patch (D.diff ~eq l l') in
+    let msgs = React.S.diff f signal in
+    React (eq, signal, msgs)
 
 end
 

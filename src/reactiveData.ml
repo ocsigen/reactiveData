@@ -114,31 +114,19 @@ struct
 
   let set (h : _ handle) l = h (Set l)
 
+  let complete_msgs s e =
+    let set p = Set p in
+    let next_value = React.(E.map set @@ E.once @@ S.changes s) in
+    let following_msg = React.E.drop_once e in
+    React.E.select [next_value ; following_msg]
+
   let fold ?(eq = (=)) f s acc =
     match s with
     | Const c ->
       React.S.const (f acc (Set c))
-    | React (eq', s, e) ->
-      let l0 = React.S.value s in
-      let acc = f acc (Set l0) in
-
-      let make_pair v' v = v', v in
-      let diff_s = React.S.diff make_pair s in
-      let events = React.E.l2 make_pair diff_s e in
-
-      let first = ref true in
-      let f acc ((l', l), m') =
-        let acc =
-          if !first then begin
-            first := false ;
-            if D.equal eq' l l0 then acc
-            else f acc (Set l')
-          end
-          else acc
-        in
-        f acc m'
-      in
-      React.S.fold ~eq f acc events
+    | React (_, s, e) ->
+      let msgs = complete_msgs s e in
+      React.(S.hold ~eq acc @@ E.fold f acc msgs)
 
   let value_s = function
     | Const c -> React.S.const c

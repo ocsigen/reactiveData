@@ -47,6 +47,7 @@ module type S = sig
   val value : 'a t -> 'a data
   val fold :
     ?eq:('a -> 'a -> bool) ->
+    ?current:bool ->
     ('a -> 'b msg -> 'a) ->
     'b t -> 'a -> 'a React.signal
   val value_s : 'a t -> 'a data React.S.t
@@ -114,18 +115,27 @@ struct
 
   let set (h : _ handle) l = h (Set l)
 
-  let complete_msgs s e =
-    let set p = Set p in
-    let next_value = React.(E.map set @@ E.once @@ S.changes s) in
+  let complete_msgs eq current s e =
+    let f = match current with
+      | None -> fun p -> Set p
+      | Some p0 -> fun p -> Patch (D.diff ~eq p0 p)
+    in
+    let next_value = React.(E.map f @@ E.once @@ S.changes s) in
     let following_msg = React.E.drop_once e in
     React.E.select [next_value ; following_msg]
 
-  let fold ?(eq = (=)) f s acc =
+  let fold ?(eq = (=)) ?(current=false) f s acc =
     match s with
     | Const c ->
       React.S.const (f acc (Set c))
-    | React (_, s, e) ->
-      let msgs = complete_msgs s e in
+    | React (eq', s, e) ->
+      let acc, current =
+        if current then
+          let v = React.S.value s in
+          f acc (Set v), Some v
+        else acc, None
+      in
+      let msgs = complete_msgs eq' current s e in
       React.(S.hold ~eq acc @@ E.fold f acc msgs)
 
   let value_s = function

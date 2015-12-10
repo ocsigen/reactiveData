@@ -37,6 +37,7 @@ module type S = sig
   val value : 'a t -> 'a data
   val fold :
     ?eq:('a -> 'a -> bool) ->
+    ?current:bool ->
     ('a -> 'b msg -> 'a) ->
     'b t -> 'a -> 'a React.signal
   val value_s : 'a t -> 'a data React.S.t

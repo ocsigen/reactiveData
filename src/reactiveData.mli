@@ -77,8 +77,6 @@ sig
   val singleton_s : 'a React.S.t -> 'a t
   val concat : 'a t -> 'a t -> 'a t
   val rev : 'a t -> 'a t
-  val sort : ('a -> 'a -> int) -> 'a t -> [`Not_implemented]
-  val filter : ('a -> unit) -> 'a t -> [`Not_implemented]
 end
 
 module RMap(M : Map.S) : S

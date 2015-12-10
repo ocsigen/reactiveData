@@ -118,8 +118,6 @@ struct
 
   let set (h : _ handle) l = h (Set l)
 
-  (* TODO: use ppx_deriving? *)
-
   let fst_nth_eq eq x y =
     match x, y with
     | `Fst x, `Fst y
@@ -469,15 +467,6 @@ module RList = struct
         | Patch p -> Patch (List.map inverse p))  (event t)
     in
     make_from (List.rev (value t)) e
-
-  let sort eq t = `Not_implemented
-    (* let e = React.E.map (function *)
-    (*     | Set l -> Set (List.sort eq l) *)
-    (*     | Patch p -> Patch p)  (event t) *)
-    (* in *)
-    (* make_from (List.sort eq (value t)) e *)
-
-  let filter f t = `Not_implemented
 
 end
 

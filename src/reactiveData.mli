@@ -34,21 +34,17 @@ module type S = sig
   type 'a handle
   type 'a t
   val empty : 'a t
-  val make : ?eq:('a -> 'a -> bool) -> 'a data -> 'a t * 'a handle
-  val make_from :
-    ?eq:('a -> 'a -> bool) -> 'a data -> 'a msg React.E.t -> 'a t
+  val make : 'a data -> 'a t * 'a handle
+  val make_from : 'a data -> 'a msg React.E.t -> 'a t
   val make_from_s :
     ?eq:('a -> 'a -> bool) -> 'a data React.S.t -> 'a t
   val const : 'a data -> 'a t
   val patch : 'a handle -> 'a patch -> unit
   val set : 'a handle -> 'a data -> unit
   val map_msg : ('a -> 'b) -> 'a msg -> 'b msg
-  val map : ?eq:('b -> 'b -> bool) -> ('a -> 'b) -> 'a t -> 'b t
+  val map : ('a -> 'b) -> 'a t -> 'b t
   val value : 'a t -> 'a data
-  val fold :
-    ?eq:('a -> 'a -> bool) ->
-    ('a -> 'b msg -> 'a) ->
-    'b t -> 'a -> 'a React.signal
+  val fold : ('a -> 'b msg -> 'a) -> 'b t -> 'a -> 'a React.signal
   val value_s : 'a t -> 'a data React.S.t
   val event : 'a t -> 'a msg React.E.t
 end

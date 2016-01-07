@@ -328,7 +328,7 @@ module DataList = struct
     let add acc i v = I (i, v) :: acc
     and remove acc i = R i :: acc
     and acc = [] in
-    fold_diff ~eq ~acc ~add ~remove x y |> list_rev
+    list_rev (fold_diff ~eq ~acc ~add ~remove x y)
 
 end
 
@@ -517,7 +517,7 @@ module RMap(M : Map.S) = struct
         | `A v ->
           `Add (key, v) :: acc
       and acc = [] in
-      M.fold g m acc |> List.rev
+      List.rev (M.fold g m acc)
 
   end
 

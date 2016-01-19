@@ -452,15 +452,6 @@ module RList = struct
     in
     make_from (List.rev (value t)) e
 
-  let sort eq t = `Not_implemented
-    (* let e = React.E.map (function *)
-    (*     | Set l -> Set (List.sort eq l) *)
-    (*     | Patch p -> Patch p)  (event t) *)
-    (* in *)
-    (* make_from (List.sort eq (value t)) e *)
-
-  let filter f t = `Not_implemented
-
 end
 
 module RMap(M : Map.S) = struct

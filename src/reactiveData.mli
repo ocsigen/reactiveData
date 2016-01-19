@@ -224,10 +224,6 @@ sig
       [a] *)
   val rev : 'a t -> 'a t
 
-  (**/**)
-  val sort : ('a -> 'a -> int) -> 'a t -> [`Not_implemented]
-  val filter : ('a -> unit) -> 'a t -> [`Not_implemented]
-
 end
 
 (** Reactive map data structure *)

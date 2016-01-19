@@ -28,11 +28,11 @@ module type DATA = sig
   val diff : eq:('a -> 'a -> bool) -> 'a data -> 'a data -> 'a patch
 end
 module type S = sig
+  type 'a t
   type 'a data
   type 'a patch
   type 'a msg = Patch of 'a patch | Set of 'a data
   type 'a handle
-  type 'a t
   val empty : 'a t
   val make : 'a data -> 'a t * 'a handle
   val make_from : 'a data -> 'a msg React.E.t -> 'a t

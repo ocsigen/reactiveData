@@ -341,7 +341,6 @@ module RList = struct
     | U of int * 'a
     | X of int * int
 
-  let nil = empty
   let append x s = patch s [D.I (-1,x)]
   let cons x s = patch s [D.I (0,x)]
   let insert x i s = patch s [D.I (i,x)]

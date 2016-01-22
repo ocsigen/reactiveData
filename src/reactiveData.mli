@@ -181,9 +181,6 @@ sig
   include S with type 'a data = 'a list
              and type 'a patch := 'a patch
 
-  (** Deprecated. Use [empty]. *)
-  val nil : 'a t
-
   (** Add element to the end *)
   val append : 'a -> 'a handle -> unit
 

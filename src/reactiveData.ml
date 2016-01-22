@@ -34,9 +34,9 @@ module type S = sig
   type 'a msg = Patch of 'a patch | Set of 'a data
   type 'a handle
   val empty : 'a t
-  val make : 'a data -> 'a t * 'a handle
-  val make_from : 'a data -> 'a msg React.E.t -> 'a t
-  val make_from_s : ?eq:('a -> 'a -> bool) -> 'a data React.S.t -> 'a t
+  val create : 'a data -> 'a t * 'a handle
+  val from_event : 'a data -> 'a msg React.E.t -> 'a t
+  val from_signal : ?eq:('a -> 'a -> bool) -> 'a data React.S.t -> 'a t
   val const : 'a data -> 'a t
   val patch : 'a handle -> 'a patch -> unit
   val set   : 'a handle -> 'a data -> unit
@@ -44,7 +44,7 @@ module type S = sig
   val map : ('a -> 'b) -> 'a t -> 'b t
   val value : 'a t -> 'a data
   val fold : ('a -> 'b msg -> 'a) -> 'b t -> 'a -> 'a React.signal
-  val value_s : 'a t -> 'a data React.S.t
+  val signal : 'a t -> 'a data React.S.t
   val event : 'a t -> 'a msg React.E.t
 end
 
@@ -75,7 +75,7 @@ module Make(D : DATA) :
 
   let empty = Const D.empty
 
-  let make l =
+  let create l =
     let initial_event,send = React.E.create () in
     let current = ref l in
     let event = React.E.map (fun msg ->
@@ -86,7 +86,7 @@ module Make(D : DATA) :
         msg) initial_event in
     Mut {current;event},send
 
-  let make_from l initial_event =
+  let from_event l initial_event =
     let current = ref l in
     let event = React.E.map (fun msg ->
         begin match msg with
@@ -135,7 +135,7 @@ module Make(D : DATA) :
       let acc = f acc (Set (!(s.current))) in
       React.S.fold f acc s.event
 
-  let value_s (s : 'a t) : 'a data React.S.t =
+  let signal (s : 'a t) : 'a data React.S.t =
     match s with
     | Const c -> React.S.const c
     | Mut s ->
@@ -144,9 +144,9 @@ module Make(D : DATA) :
           | Set l -> l
           | Patch p -> merge p l) (!(s.current)) s.event
 
-  let make_from_s ?(eq = (=)) s =
+  let from_signal ?(eq = (=)) s =
     let f d' d = Patch (D.diff ~eq d d') in
-    make_from (React.S.value s) (React.S.diff f s)
+    from_event (React.S.value s) (React.S.diff f s)
 
 end
 
@@ -341,8 +341,8 @@ module RList = struct
     | U of int * 'a
     | X of int * int
 
-  let append x s = patch s [D.I (-1,x)]
   let cons x s = patch s [D.I (0,x)]
+  let snoc x s = patch s [D.I (-1,x)]
   let insert x i s = patch s [D.I (i,x)]
   let update x i s = patch s [D.U (i,x)]
   let move i j s = patch s [D.X (i,j)]
@@ -353,7 +353,7 @@ module RList = struct
   let singleton_s s =
     let first = ref true in
     let e,send = React.E.create () in
-    let result = make_from [] e in
+    let result = from_event [] e in
     let _ = React.S.map (fun x ->
         if !first
         then begin
@@ -436,7 +436,7 @@ module RList = struct
           Set(s1 @ s2)
         | None,None -> assert false
       ) tuple_ev in
-    make_from (v1 @ v2) merged_ev
+    from_event (v1 @ v2) merged_ev
 
   let inverse : 'a . 'a p -> 'a p = function
     | I (i,x) -> I(-i-1, x)
@@ -449,7 +449,7 @@ module RList = struct
         | Set l -> Set (List.rev l)
         | Patch p -> Patch (List.map inverse p))  (event t)
     in
-    make_from (List.rev (value t)) e
+    from_event (List.rev (value t)) e
 
 end
 

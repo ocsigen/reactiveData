@@ -55,11 +55,11 @@ module type S = sig
 
   (** Build a container from initial contents. The handle can be used
       for performing reactive updates. *)
-  val make : 'a data -> 'a t * 'a handle
+  val create : 'a data -> 'a t * 'a handle
 
-  (** [make_from d e] is a container whose initial value is [d], and
+  (** [from_event d e] is a container whose initial value is [d], and
       which gets updated for every occurrence of [e] *)
-  val make_from : 'a data -> 'a msg React.E.t -> 'a t
+  val from_event : 'a data -> 'a msg React.E.t -> 'a t
 
   (** Convert a React signal into a ReactiveData container.
 
@@ -67,7 +67,7 @@ module type S = sig
       detect the differences between [v] and [v'], and perform
       downstream computation (e.g., for [map]) only on the new and
       modified elements. *)
-  val make_from_s :
+  val from_signal :
     ?eq:('a -> 'a -> bool) -> 'a data React.S.t -> 'a t
 
   (** Produce a constant container *)
@@ -103,7 +103,7 @@ module type S = sig
   val fold : ('a -> 'b msg -> 'a) -> 'b t -> 'a -> 'a React.signal
 
   (** Signal corresponding to contents *)
-  val value_s : 'a t -> 'a data React.S.t
+  val signal : 'a t -> 'a data React.S.t
 
   (** Event whose occurrences correspond to container updates *)
   val event : 'a t -> 'a msg React.E.t
@@ -181,11 +181,11 @@ sig
   include S with type 'a data = 'a list
              and type 'a patch := 'a patch
 
-  (** Add element to the end *)
-  val append : 'a -> 'a handle -> unit
-
   (** Add element to the beginning *)
   val cons : 'a -> 'a handle -> unit
+
+  (** Add element to the end *)
+  val snoc : 'a -> 'a handle -> unit
 
   (** [insert v i h] adds [v] as the [i]-th position in the container
       corresponding to [h]. The indices of the subsequent elements

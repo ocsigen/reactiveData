@@ -41,4 +41,4 @@ release: doc/html/.git
 
 archive:
 	@if [ -z "$(VERSION)" ]; then echo "Usage: make archive VERSION=1.0.0"; exit 1; fi
-	wget "https://github.com/mirage/$(NAME)/archive/$(VERSION).tar.gz"
+	wget "https://github.com/ocsigen/$(NAME)/archive/$(VERSION).tar.gz"

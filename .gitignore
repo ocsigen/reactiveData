@@ -4,3 +4,4 @@ _build
 .#*
 reactiveData.install
 api.docdir
+doc/html

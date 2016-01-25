@@ -7,6 +7,8 @@ homepage: "https://github.com/ocsigen/reactiveData"
 dev-repo: "https://github.com/ocsigen/reactiveData.git"
 bug-reports: "https://github.com/ocsigen/reactiveData/issues"
 
+doc:"https://ocsigen.github.io/reactiveData/dev/"
+
 tags: [ "reactive" "declarative" "signal" "event" "frp" ]
 license: "LGPL-3.0 with OCaml linking exception"
 

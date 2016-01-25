@@ -1,4 +1,4 @@
-===== dev =====
+===== 0.2 =====
 
   * Add `from_signal`, which converts React signals to ReactiveData
     containers. `from_signal` uses a diffing algorithm to detect what

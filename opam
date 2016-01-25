@@ -16,5 +16,6 @@ build:
   [ "ocaml" "pkg/build.ml" "native=%{ocaml-native}%"
                            "native-dynlink=%{ocaml-native}%" ]
 ]
+doc: ["ocamlbuild" "-use-ocamlfind" "src/api.docdir/index.html"]
 
 available: ocaml-version >= "3.11.0"

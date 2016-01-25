@@ -5,3 +5,6 @@ build:
 
 clean:
 	ocamlbuild -clean
+
+doc: build
+	ocamlbuild -use-ocamlfind src/api.docdir/index.html

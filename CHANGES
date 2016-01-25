@@ -1,10 +1,10 @@
 ===== dev =====
 
-  * Add `make_from_s`, which converts React signals to ReactiveData
-    containers. `make_from_s` uses a diffing algorithm to detect what
+  * Add `from_signal`, which converts React signals to ReactiveData
+    containers. `from_signal` uses a diffing algorithm to detect what
     changes, thus minimizing the updates needed downstream.
   * Optimize common cases of `merge`.
-  * Provide documentation.
+  * Provide documentation and make the naming more consistent.
 
 ===== 0.1 ======
 

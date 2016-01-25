@@ -110,49 +110,6 @@ module type S = sig
 
 end
 
-(** Signature describing a raw data container (['a data]).
-
-    Given an implementation of [DATA], an incremental version of the
-    container can be produced (via [Make]). *)
-module type DATA = sig
-
-  (** Data container *)
-  type 'a data
-
-  (** Patch format for modifying the container *)
-  type 'a patch
-
-  (** Applicative merge operation: [merge p d] is a new container
-      produced by applying [p] on [d]. [d] does not change. *)
-  val merge : 'a patch -> 'a data -> 'a data
-
-  (** Transform a patch *)
-  val map_patch : ('a -> 'b) -> 'a patch -> 'b patch
-
-  (** [map f d] applies [f] on all the elements of [d], producing a
-      new container in an applicative way *)
-  val map_data : ('a -> 'b) -> 'a data -> 'b data
-
-  (** Empty container *)
-  val empty : 'a data
-
-  (** Lift an equality operator over atoms of type ['a] to an equality
-      operator over ['a data] *)
-  val equal : ('a -> 'a -> bool) -> 'a data -> 'a data -> bool
-
-  (** [diff ?eq d1 d2] produces a patch describing the differences
-      between [d1] and [d2].
-
-      The optional [?eq] argument is used for comparing the atoms
-      inside [d1] and [d2]. (The default value for [eq] is [(=)].) *)
-  val diff : eq:('a -> 'a -> bool) -> 'a data -> 'a data -> 'a patch
-
-end
-
-(** Functor for turning a plain container into an incremental one *)
-module Make(D : DATA) : S with type 'a data = 'a D.data
-                           and type 'a patch = 'a D.patch
-
 (** Reactive list data structure *)
 module RList :
 sig
@@ -227,3 +184,46 @@ end
 module RMap(M : Map.S) : S
   with type 'a data = 'a M.t
    and type 'a patch = [ `Add of M.key * 'a | `Del of M.key ] list
+
+(** Signature describing a raw data container (['a data]).
+
+    Given an implementation of [DATA], an incremental version of the
+    container can be produced (via [Make]). *)
+module type DATA = sig
+
+  (** Data container *)
+  type 'a data
+
+  (** Patch format for modifying the container *)
+  type 'a patch
+
+  (** Applicative merge operation: [merge p d] is a new container
+      produced by applying [p] on [d]. [d] does not change. *)
+  val merge : 'a patch -> 'a data -> 'a data
+
+  (** Transform a patch *)
+  val map_patch : ('a -> 'b) -> 'a patch -> 'b patch
+
+  (** [map f d] applies [f] on all the elements of [d], producing a
+      new container in an applicative way *)
+  val map_data : ('a -> 'b) -> 'a data -> 'b data
+
+  (** Empty container *)
+  val empty : 'a data
+
+  (** Lift an equality operator over atoms of type ['a] to an equality
+      operator over ['a data] *)
+  val equal : ('a -> 'a -> bool) -> 'a data -> 'a data -> bool
+
+  (** [diff ?eq d1 d2] produces a patch describing the differences
+      between [d1] and [d2].
+
+      The optional [?eq] argument is used for comparing the atoms
+      inside [d1] and [d2]. (The default value for [eq] is [(=)].) *)
+  val diff : eq:('a -> 'a -> bool) -> 'a data -> 'a data -> 'a patch
+
+end
+
+(** Functor for turning a plain container into an incremental one *)
+module Make(D : DATA) : S with type 'a data = 'a D.data
+                           and type 'a patch = 'a D.patch

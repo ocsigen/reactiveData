@@ -39,6 +39,7 @@ release: doc/html/.git
 	git commit -m "Version $(VERSION)."
 	git tag -a $(VERSION) -m "Version $(VERSION)."
 
-archive:
-	@if [ -z "$(VERSION)" ]; then echo "Usage: make archive VERSION=1.0.0"; exit 1; fi
-	wget "https://github.com/ocsigen/$(NAME)/archive/$(VERSION).tar.gz"
+prepare:
+	@if [ -z "$(VERSION)" ]; then echo "Usage: make prepare VERSION=1.0.0"; exit 1; fi
+	opam publish prepare "$(NAME).$(VERSION)" \
+    "https://github.com/ocsigen/$(NAME)/archive/$(VERSION).tar.gz"

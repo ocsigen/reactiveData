@@ -1,4 +1,4 @@
-version = "0.1"
+version = "0.2"
 description = "Declarative events and signals for OCaml"
 requires = "react"
 archive(byte) = "reactiveData.cma"

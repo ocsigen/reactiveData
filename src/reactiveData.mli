@@ -103,7 +103,8 @@ module type S = sig
   val fold : ('a -> 'b msg -> 'a) -> 'b t -> 'a -> 'a React.signal
 
   (** Signal corresponding to contents *)
-  val signal : 'a t -> 'a data React.S.t
+  val signal :
+    ?eq:('a -> 'a -> bool) -> 'a t -> 'a data React.S.t
 
   (** Event whose occurrences correspond to container updates *)
   val event : 'a t -> 'a msg React.E.t

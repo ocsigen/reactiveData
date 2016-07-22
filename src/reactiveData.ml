@@ -44,7 +44,7 @@ module type S = sig
   val map : ('a -> 'b) -> 'a t -> 'b t
   val value : 'a t -> 'a data
   val fold : ('a -> 'b msg -> 'a) -> 'b t -> 'a -> 'a React.signal
-  val signal : 'a t -> 'a data React.S.t
+  val signal : ?eq:('a -> 'a -> bool) -> 'a t -> 'a data React.S.t
   val event : 'a t -> 'a msg React.E.t
 end
 
@@ -135,11 +135,11 @@ module Make(D : DATA) :
       let acc = f acc (Set (!(s.current))) in
       React.S.fold f acc s.event
 
-  let signal (s : 'a t) : 'a data React.S.t =
+  let signal ?(eq = (=)) (s : 'a t) : 'a data React.S.t =
     match s with
     | Const c -> React.S.const c
     | Mut s ->
-      React.S.fold (fun l msg ->
+      React.S.fold ~eq:(D.equal eq) (fun l msg ->
           match msg with
           | Set l -> l
           | Patch p -> merge p l) (!(s.current)) s.event

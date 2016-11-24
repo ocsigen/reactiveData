@@ -1,3 +1,7 @@
+===== dev =====
+
+  * Add ?eq parameter to S.signal
+
 ===== 0.2 =====
 
   * Add `from_signal`, which converts React signals to ReactiveData

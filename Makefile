@@ -11,29 +11,30 @@ doc: build
 
 
 NAME=reactiveData
+TMP=/tmp
 
-doc/html/.git:
-	mkdir -p doc/html
-	cd doc/html && (\
-		git init && \
-		git remote add origin git@github.com:ocsigen/$(NAME).git && \
-		git checkout -b gh-pages \
-	)
+TMP_REPO=$(TMP)/$(NAME)
 
-gh-pages: doc/html/.git doc
-	cd doc/html && git checkout gh-pages
-	rm -f doc/html/dev/*
-	cp _build/src/api.docdir/* doc/html/dev/
-	cd doc/html && git add dev
-	cd doc/html && git commit -a -m "Doc updates"
-	cd doc/html && git push origin gh-pages
+$(TMP_REPO)/.git:
+	cd $(TMP) && \
+	git clone https://github.com/ocsigen/$(NAME).git && \
+	cd $(NAME) && \
+	git checkout gh-pages
 
-release: doc/html/.git
+gh-pages: $(TMP_REPO)/.git doc
+	cd $(TMP_REPO) && git checkout gh-pages
+	rm -f $(TMP_REPO)/dev/*
+	cp _build/src/api.docdir/* $(TMP_REPO)/dev/
+	cd $(TMP_REPO) && git add dev
+	cd $(TMP_REPO) && git commit -a -m "Doc updates"
+	cd $(TMP_REPO) && git push origin gh-pages
+
+release: $(TMP_REPO)/.git
 	@if [ -z "$(VERSION)" ]; then echo "Usage: make release VERSION=1.0.0"; exit 1; fi
-	cd doc/html && cp -r dev $(VERSION)
-	cd doc/html && git add $(VERSION)
-	cd doc/html && git commit -m "Doc updates $(VERSION)"
-	cd doc/html && git push origin gh-pages
+	cd $(TMP_REPO) && cp -r dev $(VERSION)
+	cd $(TMP_REPO) && git add $(VERSION)
+	cd $(TMP_REPO) && git commit -m "Doc updates $(VERSION)"
+	cd $(TMP_REPO) && git push origin gh-pages
 	sed -i "s/= dev =/= $(VERSION) =/" CHANGES
 	git add CHANGES
 	git commit -m "Version $(VERSION)."

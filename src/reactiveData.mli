@@ -179,6 +179,10 @@ sig
       [a] *)
   val rev : 'a t -> 'a t
 
+  (** [filter pred l] keeps the elements of [l] matching [pred]; gets
+      updated when [l] is. [pred] should be a pure function *)
+  val filter : ('a -> bool) -> 'a t -> 'a t
+    
 end
 
 (** Reactive map data structure *)

@@ -451,6 +451,181 @@ module RList = struct
     in
     from_event (List.rev (value t)) e
 
+  let filter pred l =
+    let module IntMap = Map.Make( 
+                            struct
+                              let compare = Pervasives.compare
+                              type t = int
+                            end )
+    in
+
+    let index = ref IntMap.empty in
+    let size = ref 0 in
+
+    let filter_list l =
+      let rec aux (l: 'a list) res their_i my_i = match l with
+        | [] -> res
+        | x::xs ->
+           if pred x
+           then
+             begin
+               index := IntMap.add their_i (my_i + 1, true) !index;
+               aux xs (x::res) (their_i + 1) (my_i + 1)
+             end
+           else
+             begin
+               index := IntMap.add their_i (my_i, false) !index;
+               aux xs res (their_i + 1) my_i
+             end
+      in
+      size := List.length l;
+      index := IntMap.empty;
+      List.rev (aux l [] 0 (-1))
+    in
+
+
+    let normalise i = if i < 0 then !size + 1 + i else i in
+    
+    let update_index_insert their_i visible =
+      let their_i = normalise their_i in
+      let left_alone, displaced, updatables = IntMap.split their_i !index in
+      let updatables = match displaced with
+        | None -> (assert (IntMap.is_empty updatables); IntMap.empty)
+        | Some o_i -> IntMap.add their_i o_i updatables
+      in
+      let update_j their_j my_j =
+        let new_j = match (my_j, visible) with
+          | ((my_j, p), false) -> (my_j, p)
+          | ((my_j, p), true) -> (my_j + 1, p)
+        in
+        index := IntMap.add (their_j + 1) new_j !index
+      in          
+      let () = IntMap.iter update_j (updatables) in
+      let my_i = if IntMap.is_empty left_alone
+                 then -1
+                 else fst (snd (IntMap.max_binding left_alone))
+      in
+      let my_i = if visible then my_i + 1 else my_i in
+      index := IntMap.add their_i (my_i, visible) !index;
+      incr size;
+      my_i
+    in
+    
+    let update_index_remove their_i =
+      let (_, was_visible) = IntMap.find their_i !index in
+      let updatables = IntMap.filter (fun j _ -> j > their_i) !index in
+      let update_j their_j my_j =
+        let new_j = match (my_j, was_visible) with
+          | ((my_j, v), false) -> (my_j, v)
+          | ((my_j, v), true) -> (my_j - 1, v)
+        in
+        index := IntMap.add (their_j - 1) new_j !index
+      in
+      let last_i, _ = IntMap.max_binding !index in
+      index := IntMap.remove last_i !index;
+      decr size;
+      IntMap.iter update_j updatables
+    in
+
+    let update_index_update op i =
+      let delta j = match op with
+        | `Insert -> j + 1
+        | `Delete -> j - 1
+      in
+      let left_alone, _, updatables = IntMap.split i !index in
+      let update_j their_j (my_j, visible) = 
+        index := IntMap.add their_j (delta my_j, visible) !index
+      in
+      let new_i =
+        let previous_i = try fst (snd (IntMap.max_binding left_alone)) with Not_found -> (-1) in
+        let new_i = delta previous_i in
+        index := IntMap.add i (new_i, true) !index;
+        new_i
+      in
+      IntMap.iter update_j updatables;
+      new_i
+    in
+      
+    
+    let update_index_move origin_i dest_i dest_j was_visible =
+      let forward = origin_i < dest_i in
+      if forward then
+        for i = origin_i + 1 to dest_i do
+          let delta = if was_visible then (-1) else 0 in
+          let j, v = IntMap.find i !index in
+          let new_val = j + delta, v in
+          index := IntMap.add (i-1) new_val !index
+        done
+      else
+        for i = origin_i - 1 downto dest_j do
+          let delta = if was_visible then 1 else 0 in
+          let j, v = IntMap.find i !index in
+          let new_val = j + delta, v in
+          index := IntMap.add (i+1) new_val !index
+        done;
+      index := IntMap.add dest_i (dest_j, was_visible) !index;
+      dest_j
+    in
+
+    let convert_p = function
+      | I (i, x) ->
+         if pred x
+         then
+           begin
+             let my_i = update_index_insert i true in
+             [I (my_i, x)]
+           end
+         else
+           begin
+             ignore (update_index_insert i false);
+             []
+           end
+      | R i ->
+         let i = normalise i in
+         let ret = match IntMap.find i !index with
+           | (_, false) -> []
+           | (j, true) -> [R j]
+         in
+         let () = update_index_remove i in
+         ret
+      | U (i, x) ->
+         let i = normalise i in
+         let old_j = IntMap.find i !index in
+         if pred x
+         then
+           (match old_j with
+           | (old_j, true) -> [U (old_j, x)]
+           | (_, false) ->
+              let new_j = update_index_update `Insert i in
+              [I (new_j, x)])
+         else
+           (match old_j with
+            | (_, false) -> []
+            | (old_j, true) ->
+               let _ = update_index_update `Delete i in
+               [R old_j])
+      | X (origin_i, offset_i) ->
+         let origin_i = normalise origin_i in
+         let dest_i = origin_i + offset_i in
+         let (origin_j, was_visible) = IntMap.find origin_i !index in
+         let (dest_j, _) = IntMap.find dest_i !index in
+         let new_j = update_index_move origin_i dest_i dest_j was_visible in
+         if new_j != origin_j && was_visible
+         then
+           begin
+             [X (origin_j, new_j - origin_j)]
+           end
+         else []
+    in
+
+    let filter_e = function
+      | Set l -> Set (filter_list l)
+      | Patch p ->
+         Patch (List.concat (List.map convert_p p))
+    in
+    let e = React.E.map filter_e (event l) in
+    from_event (filter_list (value l)) e
+
 end
 
 module RMap(M : Map.S) = struct

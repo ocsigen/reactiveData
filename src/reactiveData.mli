@@ -159,8 +159,8 @@ sig
       corresponding to [h] with [v] *)
   val update : 'a -> int -> 'a handle -> unit
 
-  (** [move i j h] moves the [i]-th element of the container
-      corresponding to [h] to the [j]-th position, modifying the
+  (** [move i offset h] moves the [i]-th element of the container
+      corresponding by [offset] positions in [h], modifying the
       indices of other elements *)
   val move : int -> int -> 'a handle -> unit
 

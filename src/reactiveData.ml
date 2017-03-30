@@ -452,7 +452,7 @@ module RList = struct
     from_event (List.rev (value t)) e
 
   let filter pred l =
-    let module IntMap = Map.Make( 
+    let module IntMap = Map.Make(
                             struct
                               let compare = Pervasives.compare
                               type t = int
@@ -469,12 +469,11 @@ module RList = struct
            if pred x
            then
              begin
-               index := IntMap.add their_i (my_i + 1, true) !index;
+               index := IntMap.add their_i (my_i + 1) !index;
                aux xs (x::res) (their_i + 1) (my_i + 1)
              end
            else
              begin
-               index := IntMap.add their_i (my_i, false) !index;
                aux xs res (their_i + 1) my_i
              end
       in
@@ -483,98 +482,106 @@ module RList = struct
       List.rev (aux l [] 0 (-1))
     in
 
-
     let normalise i = if i < 0 then !size + 1 + i else i in
-    
-    let update_index_insert their_i visible =
-      let their_i = normalise their_i in
-      let left_alone, displaced, updatables = IntMap.split their_i !index in
+
+    let update_index_insert insert_pos_full_list visible =
+      let insert_pos_full_list = normalise insert_pos_full_list in
+      let left_alone, displaced, updatables = IntMap.split insert_pos_full_list !index in
       let updatables = match displaced with
-        | None -> (assert (IntMap.is_empty updatables); IntMap.empty)
-        | Some o_i -> IntMap.add their_i o_i updatables
+        | None -> updatables
+        | Some displaced_in_filtered ->
+           IntMap.add insert_pos_full_list displaced_in_filtered updatables
       in
-      let update_j their_j my_j =
-        let new_j = match (my_j, visible) with
-          | ((my_j, p), false) -> (my_j, p)
-          | ((my_j, p), true) -> (my_j + 1, p)
-        in
-        index := IntMap.add (their_j + 1) new_j !index
-      in          
-      let () = IntMap.iter update_j (updatables) in
-      let my_i = if IntMap.is_empty left_alone
-                 then -1
-                 else fst (snd (IntMap.max_binding left_alone))
+      let update_j j_full_list j_filtered_list =
+        let new_j_filtered = if visible then j_filtered_list + 1 else j_filtered_list in
+        index := IntMap.add (j_full_list + 1) new_j_filtered !index
       in
-      let my_i = if visible then my_i + 1 else my_i in
-      index := IntMap.add their_i (my_i, visible) !index;
+      let () = IntMap.iter update_j updatables in
+      let insert_pos_filtered = if IntMap.is_empty left_alone
+                                then 0
+                                else (snd (IntMap.max_binding left_alone)) + 1
+      in
+      if visible then index := IntMap.add insert_pos_full_list insert_pos_filtered !index;
       incr size;
-      my_i
+      insert_pos_filtered
     in
-    
-    let update_index_remove their_i =
-      let (_, was_visible) = IntMap.find their_i !index in
-      let updatables = IntMap.filter (fun j _ -> j > their_i) !index in
-      let update_j their_j my_j =
-        let new_j = match (my_j, was_visible) with
-          | ((my_j, v), false) -> (my_j, v)
-          | ((my_j, v), true) -> (my_j - 1, v)
-        in
-        index := IntMap.add (their_j - 1) new_j !index
+
+    let update_index_remove remove_pos_full_list =
+      let was_visible = IntMap.mem remove_pos_full_list !index in
+      let _,_,updatables = IntMap.split remove_pos_full_list !index in
+      let update_j j_full_list j_filtered_list =
+        let new_j = if was_visible then j_filtered_list else j_filtered_list - 1 in
+        index := IntMap.add (j_full_list - 1) new_j !index
       in
-      let last_i, _ = IntMap.max_binding !index in
-      index := IntMap.remove last_i !index;
+      if not (IntMap.is_empty !index)
+      then
+        let last_i, _ = IntMap.max_binding !index in
+        index := IntMap.remove last_i !index
+      else ();
       decr size;
       IntMap.iter update_j updatables
     in
 
-    let update_index_update op i =
-      let delta j = match op with
-        | `Insert -> j + 1
-        | `Delete -> j - 1
+    let update_index_update_delete update_pos_full_list =
+      let _, _, updatables = IntMap.split update_pos_full_list !index in
+      let update_j j_full_list j_filtered_list =
+        index := IntMap.add j_full_list (j_filtered_list - 1) !index
       in
-      let left_alone, _, updatables = IntMap.split i !index in
-      let update_j their_j (my_j, visible) = 
-        index := IntMap.add their_j (delta my_j, visible) !index
-      in
-      let new_i =
-        let previous_i = try fst (snd (IntMap.max_binding left_alone)) with Not_found -> (-1) in
-        let new_i = delta previous_i in
-        index := IntMap.add i (new_i, true) !index;
-        new_i
-      in
-      IntMap.iter update_j updatables;
-      new_i
+      index := IntMap.remove update_pos_full_list !index;
+      IntMap.iter update_j updatables
     in
-      
-    
-    let update_index_move origin_i dest_i dest_j was_visible =
-      let forward = origin_i < dest_i in
+
+    let update_index_update_insert update_pos_full_list =
+      let left_alone, none, updatables = IntMap.split update_pos_full_list !index in
+      assert (none = None);
+      let update_j j_full_list j_filtered_list =
+        index := IntMap.add j_full_list (j_filtered_list + 1) !index
+      in
+      let new_pos_filtered_list =
+        let previous_pos_filtered = try (snd (IntMap.max_binding left_alone)) with Not_found -> (-1) in
+        previous_pos_filtered + 1
+      in
+      index := IntMap.add update_pos_full_list new_pos_filtered_list !index;
+      IntMap.iter update_j updatables;
+      new_pos_filtered_list
+    in
+
+    let update_index_move from_full_list to_full_list to_filtered =
+      let was_visible = match to_filtered with | Some _ -> true | None -> false in
+      let forward = from_full_list < to_full_list in
       if forward then
-        for i = origin_i + 1 to dest_i do
+        for i_full = from_full_list + 1 to to_full_list do
           let delta = if was_visible then (-1) else 0 in
-          let j, v = IntMap.find i !index in
-          let new_val = j + delta, v in
-          index := IntMap.add (i-1) new_val !index
+          try
+            let i_filtered = IntMap.find i_full !index in
+            let new_val = i_filtered + delta in
+            index := IntMap.add (i_full - 1) new_val !index
+          with
+          | Not_found -> ()
         done
       else
-        for i = origin_i - 1 downto dest_j do
-          let delta = if was_visible then 1 else 0 in
-          let j, v = IntMap.find i !index in
-          let new_val = j + delta, v in
-          index := IntMap.add (i+1) new_val !index
+        for i_full = from_full_list - 1 downto to_full_list do
+          try
+            let delta = if was_visible then 1 else 0 in
+            let i_filtered = IntMap.find i_full !index in
+            let new_val = i_filtered + delta in
+            index := IntMap.add (i_full + 1) new_val !index
+          with
+          | Not_found -> ()
         done;
-      index := IntMap.add dest_i (dest_j, was_visible) !index;
-      dest_j
+      match to_filtered with
+      | Some to_filtered ->
+         index := IntMap.add to_full_list to_filtered !index
+      | None ->
+         index := IntMap.remove to_full_list !index
     in
 
     let convert_p = function
       | I (i, x) ->
          if pred x
          then
-           begin
-             let my_i = update_index_insert i true in
-             [I (my_i, x)]
-           end
+           let my_i = update_index_insert i true in
+           [I (my_i, x)]
          else
            begin
              ignore (update_index_insert i false);
@@ -582,40 +589,49 @@ module RList = struct
            end
       | R i ->
          let i = normalise i in
-         let ret = match IntMap.find i !index with
-           | (_, false) -> []
-           | (j, true) -> [R j]
-         in
+         let ret = try let j = IntMap.find i !index in [R j] with | Not_found -> [] in
          let () = update_index_remove i in
          ret
       | U (i, x) ->
          let i = normalise i in
-         let old_j = IntMap.find i !index in
-         if pred x
-         then
-           (match old_j with
-           | (old_j, true) -> [U (old_j, x)]
-           | (_, false) ->
-              let new_j = update_index_update `Insert i in
-              [I (new_j, x)])
-         else
-           (match old_j with
-            | (_, false) -> []
-            | (old_j, true) ->
-               let _ = update_index_update `Delete i in
-               [R old_j])
-      | X (origin_i, offset_i) ->
-         let origin_i = normalise origin_i in
-         let dest_i = origin_i + offset_i in
-         let (origin_j, was_visible) = IntMap.find origin_i !index in
-         let (dest_j, _) = IntMap.find dest_i !index in
-         let new_j = update_index_move origin_i dest_i dest_j was_visible in
-         if new_j != origin_j && was_visible
-         then
-           begin
-             [X (origin_j, new_j - origin_j)]
-           end
-         else []
+         begin
+           try
+             let old_j = IntMap.find i !index in
+             if pred x
+             then [U (old_j, x)]
+             else (update_index_update_delete i; [R old_j])
+           with
+           | Not_found ->
+              if pred x
+              then
+                let new_j = update_index_update_insert i in
+                [I (new_j, x)]
+              else
+                []
+         end
+      | X (origin_full, offset_full) ->
+         let origin_full = normalise origin_full in
+         let dest_full = origin_full + offset_full in
+         try
+           let origin_filtered = IntMap.find origin_full !index in
+           let dest_filtered =
+             try IntMap.find dest_full !index
+             with
+             | Not_found ->
+                let small_ones, _, _ = IntMap.split origin_full !index in
+                if IntMap.is_empty small_ones
+                then 0
+                else snd (IntMap.max_binding small_ones) + 1
+           in
+           update_index_move origin_full dest_full (Some dest_filtered);
+           if dest_filtered != origin_filtered
+           then [X (origin_filtered, dest_filtered - origin_filtered)]
+           else []
+         with
+         | Not_found ->
+            (* moving an element that was filtered out *)
+            update_index_move origin_full dest_full None;
+            []
     in
 
     let filter_e = function

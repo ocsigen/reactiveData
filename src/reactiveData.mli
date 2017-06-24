@@ -186,10 +186,19 @@ sig
 end
 
 (** Reactive map data structure *)
-module RMap(M : Map.S) : S
-  with type 'a data = 'a M.t
-   and type 'a patch = [ `Add of M.key * 'a | `Del of M.key ] list
+module RMap(M : Map.S) :
+sig
 
+  type 'a patch = [ `Add of M.key * 'a | `Del of M.key ] list
+
+  include S with type 'a data = 'a M.t
+             and type 'a patch := 'a patch
+
+  (** [filter pred l] keeps the elements of [l] matching [pred]; gets
+      updated when [l] is. [pred] should be a pure function *)
+  val filter : (M.key -> 'a -> bool) -> 'a t -> 'a t
+
+end
 (** Signature describing a raw data container (['a data]).
 
     Given an implementation of [DATA], an incremental version of the

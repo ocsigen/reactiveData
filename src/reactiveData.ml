@@ -704,4 +704,21 @@ module RMap(M : Map.S) = struct
 
   include Make(Data)
 
+  let filter pred m =
+
+    let convert_p = function
+      | `Add (k,v) ->
+         if pred k v
+         then [`Add (k,v)]
+         else []
+      | `Del k -> [`Del k]
+    in
+
+    let filter_e = function
+      | Set m -> Set (M.filter pred m)
+      | Patch p -> Patch (List.concat (List.map convert_p p))
+    in
+
+    let e = React.E.map filter_e (event m) in
+    from_event (M.filter pred (value m)) e
 end

@@ -275,10 +275,13 @@ module DataList = struct
     | []     , _ :: _ ->
       false
 
-  let mem l =
-    let h = Hashtbl.create 1024 in
-    List.iter (fun x -> Hashtbl.add h x ()) l;
-    Hashtbl.mem h
+  let mem (type u) l =
+    let module H =
+      Hashtbl.Make
+        (struct type t = u let hash = Hashtbl.hash let equal = (==) end) in
+    let h = H.create 16 in
+    List.iter (fun x -> H.add h x ()) l;
+    H.mem h
 
   let fold_diff ?(eq = (=)) ~acc ~remove ~add lx ly =
     let memx = mem lx

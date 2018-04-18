@@ -351,6 +351,20 @@ module RList = struct
   let move i j s = patch s [D.X (i,j)]
   let remove i s = patch s [D.R i]
 
+  let remove_last (data, handle) =
+    remove (List.length (value data) - 1) handle
+
+  let remove_eq ?(eq = (=)) (data, handle) x =
+    let index l x =
+      let rec f n = function
+        | hd :: _ when eq hd x -> n
+        | _ :: tl -> f (n + 1) tl
+        | [] -> raise Not_found in
+      f 0 l
+    in
+    let i = index (value data) x in
+    remove i handle
+
   let singleton x = const [x]
 
   let singleton_s s =
@@ -453,6 +467,21 @@ module RList = struct
         | Patch p -> Patch (List.map inverse p))  (event t)
     in
     from_event (List.rev (value t)) e
+
+  let for_all fn data =
+    let (res, set_res) = React.S.create (List.for_all fn (value data)) in
+    ignore @@ React.E.map (function
+        | Set x ->
+          set_res (List.for_all fn x) ;
+        | Patch updates ->
+          List.iter
+            (function
+              | R _ | X _ -> ()
+              | I (_, v) | U (_, v) ->
+                set_res ((React.S.value res) && fn v) )
+            updates)
+      (event data) ;
+    res
 
 end
 

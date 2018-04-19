@@ -474,19 +474,24 @@ module RList = struct
     from_event (List.rev (value t)) e
 
   let for_all fn data =
-    let (res, set_res) = React.S.create (List.for_all fn (value data)) in
-    ignore @@ React.E.map (function
-        | Set x ->
-          set_res (List.for_all fn x) ;
-        | Patch updates ->
-          List.iter
-            (function
-              | R _ | X _ -> ()
-              | I (_, v) | U (_, v) ->
-                set_res ((React.S.value res) && fn v) )
-            updates)
-      (event data) ;
-    res
+    let f = fun acc -> function
+      | Set x ->
+        List.for_all fn x
+      | Patch updates ->
+        List.fold_left
+          (fun acc -> function
+             | X _ ->
+               acc
+             | R _ ->
+               if acc then acc else List.for_all fn (value data)
+             | I (_, v) ->
+               acc && fn v
+             | U (_, v) ->
+               if acc then acc && fn v else List.for_all fn (value data) )
+          acc
+          updates
+    in
+    React.S.fold f (List.for_all fn (value data)) (event data)
 
 end
 

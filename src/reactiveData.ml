@@ -351,18 +351,23 @@ module RList = struct
   let move i j s = patch s [D.X (i,j)]
   let remove i s = patch s [D.R i]
 
+  let index ?(eq = (=)) l x =
+    let rec f n = function
+      | hd :: _ when eq hd x -> n
+      | _ :: tl -> f (n + 1) tl
+      | [] -> raise Not_found
+    in
+    f 0 l
+
+  let update_eq ?eq (data, handle) x y =
+    let i = index ?eq (value data) x in
+    update y i handle
+
   let remove_last (data, handle) =
     remove (List.length (value data) - 1) handle
 
-  let remove_eq ?(eq = (=)) (data, handle) x =
-    let index l x =
-      let rec f n = function
-        | hd :: _ when eq hd x -> n
-        | _ :: tl -> f (n + 1) tl
-        | [] -> raise Not_found in
-      f 0 l
-    in
-    let i = index (value data) x in
+  let remove_eq ?eq (data, handle) x =
+    let i = index ?eq (value data) x in
     remove i handle
 
   let singleton x = const [x]

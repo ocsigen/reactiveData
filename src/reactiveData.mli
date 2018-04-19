@@ -165,6 +165,10 @@ sig
       corresponding to [h] with [v] *)
   val update : 'a -> int -> 'a handle -> unit
 
+  (** [update_eq l a b] substitutes the first occurence of [a] (according to [eq])
+      in [l] with [b] *)
+  val update_eq : ?eq:('a -> 'a -> bool) -> ('a t * 'a handle) -> 'a -> 'a -> unit
+
   (** [move i offset h] moves the [i]-th element of the container
       corresponding by [offset] positions in [h], modifying the
       indices of other elements *)

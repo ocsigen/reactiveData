@@ -473,25 +473,45 @@ module RList = struct
     in
     from_event (List.rev (value t)) e
 
+  module IntSet =
+    Set.Make (struct type t = int let compare = Pervasives.compare end)
+
   let for_all fn data =
+    let maybe_update acc i v = if fn v then acc else IntSet.add i acc in
+    let init =
+      let rec fold i acc = function
+        | v :: tl -> fold (i + 1) (maybe_update acc i v) tl
+        | [] -> acc
+      in
+      fold 0 IntSet.empty
+    in
+    let update_idx_after i f acc =
+      IntSet.map (fun i' -> if i' >= i then f i' 1 else i') acc
+    in
     let f = fun acc -> function
-      | Set x ->
-        List.for_all fn x
+      | Set x -> init x
       | Patch updates ->
         List.fold_left
           (fun acc -> function
-             | X _ ->
-               acc
-             | R _ ->
-               if acc then acc else List.for_all fn (value data)
-             | I (_, v) ->
-               acc && fn v
-             | U (_, v) ->
-               if acc then acc && fn v else List.for_all fn (value data) )
+             | X (i, i') ->
+               if IntSet.mem i acc = IntSet.mem i' acc
+               then acc
+               else if IntSet.mem i acc
+               then IntSet.add i' (IntSet.remove i acc)
+               else IntSet.add i (IntSet.remove i' acc)
+             | R i ->
+               let acc = update_idx_after i (-) acc in
+               IntSet.remove i acc
+             | I (i, v) ->
+               let acc = update_idx_after i (+) acc in
+               maybe_update acc i v
+             | U (i, v) ->
+               maybe_update (IntSet.remove i acc) i v)
           acc
           updates
     in
-    React.S.fold f (List.for_all fn (value data)) (event data)
+    React.S.fold f (init (value data)) (event data)
+    |> React.S.map IntSet.is_empty
 
 end
 

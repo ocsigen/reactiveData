@@ -500,8 +500,7 @@ module RList = struct
                then IntSet.add i' (IntSet.remove i acc)
                else IntSet.add i (IntSet.remove i' acc)
              | R i ->
-               let acc = update_idx_after i (-) acc in
-               IntSet.remove i acc
+               update_idx_after i (-) (IntSet.remove i acc)
              | I (i, v) ->
                let acc = update_idx_after i (+) acc in
                maybe_update acc i v

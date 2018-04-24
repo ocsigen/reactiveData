@@ -155,9 +155,19 @@ sig
       change. *)
   val remove : int -> 'a handle -> unit
 
+  (** [remove_last a] removes the last element of [a] *)
+  val remove_last : ('a t * 'a handle) -> unit
+
+  (** [remove_eq l x] removes the first occurence of [x] from [l] *)
+  val remove_eq : ?eq:('a -> 'a -> bool) -> ('a t * 'a handle) -> 'a -> unit
+
   (** [update v i h] substitutes the [i]-th element of the container
       corresponding to [h] with [v] *)
   val update : 'a -> int -> 'a handle -> unit
+
+  (** [update_eq l a b] substitutes the first occurence of [a] (according to [eq])
+      in [l] with [b] *)
+  val update_eq : ?eq:('a -> 'a -> bool) -> ('a t * 'a handle) -> 'a -> 'a -> unit
 
   (** [move i offset h] moves the [i]-th element of the container
       corresponding by [offset] positions in [h], modifying the
@@ -178,6 +188,10 @@ sig
   (** [rev a] is the reversal of [a]; [rev a] gets updated along with
       [a] *)
   val rev : 'a t -> 'a t
+
+  (** [for_all fn l] is a [bool React.S.t] verifying that all elements [x] of [l]
+      satisfy [fn x] *)
+  val for_all : ('a -> bool) -> 'a t -> bool React.S.t
 
 end
 

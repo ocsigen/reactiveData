@@ -27,12 +27,21 @@ module type DATA = sig
   val equal : ('a -> 'a -> bool) -> 'a data -> 'a data -> bool
   val diff : eq:('a -> 'a -> bool) -> 'a data -> 'a data -> 'a patch
 end
+
+module type DATA' = sig
+  include DATA
+  val filter_patch : ('a -> bool) -> 'a patch -> 'a patch
+  val filter_data : ('a -> bool) -> 'a data -> 'a data
+end
+
+
 module type S = sig
-  type 'a t
   type 'a data
   type 'a patch
   type 'a msg = Patch of 'a patch | Set of 'a data
   type 'a handle
+  (* type 'a mut = {current : 'a data ref; event : 'a msg React.E.t;} *)
+  type 'a t (* = Const of 'a data | Mut of 'a mut *)
   val empty : 'a t
   val create : 'a data -> 'a t * 'a handle
   val from_event : 'a data -> 'a msg React.E.t -> 'a t
@@ -48,9 +57,24 @@ module type S = sig
   val event : 'a t -> 'a msg React.E.t
 end
 
-module Make(D : DATA) :
-  S with type 'a data = 'a D.data
-     and type 'a patch = 'a D.patch = struct
+
+module type S' = sig
+  type 'a data
+  type 'a patch
+  type 'a msg = Patch of 'a patch | Set of 'a data
+  type 'a mut = {current : 'a data ref; event : 'a msg React.E.t;}
+  type 'a t = Const of 'a data | Mut of 'a mut
+
+  include S with type 'a data := 'a data
+             and type 'a t := 'a t
+             and type 'a patch := 'a patch
+             and type 'a msg := 'a msg
+
+  val filter : ('a -> bool) -> 'a t -> 'a t
+
+end
+
+module Make(D : DATA) = struct
 
   type 'a data = 'a D.data
   type 'a patch = 'a D.patch
@@ -166,6 +190,26 @@ module DataList = struct
     | X (i,j) -> X (i,j)
     | U (i,x) -> U (i,f x)
   let map_patch f = List.map (map_patch f)
+
+  let filter_data = List.filter
+
+  let filter_patch f l =
+    let decr_patch n =
+      let decr i = if i >= n then i - 1 else i in
+      function
+      | I (i,x) -> I (decr i, x)
+      | R i -> R (decr i)
+      | X (i,j) -> X (decr i, decr j)
+      | U (i,x) -> U (decr i, x)
+    in
+    let rec iter l =
+      match l with
+      | [] -> []
+      | I (i, x) :: tl when not @@ f x ->
+        iter @@ List.map (decr_patch i) tl
+      | p :: ps -> p :: iter ps
+    in
+    iter l
 
   let merge_p op l =
     match op with
@@ -335,8 +379,36 @@ module DataList = struct
 
 end
 
+module Make'(D : DATA') :
+  S' with type 'a data = 'a D.data
+      and type 'a patch = 'a D.patch = struct
+  include Make(D)
+
+  let filter_data = D.filter_data
+  let filter_patch = D.filter_patch
+
+  let filter_msg (f : 'a -> bool) : 'a msg -> 'a msg = function
+    | Set l -> Set (filter_data f l)
+    | Patch p -> Patch (filter_patch f p)
+
+  let filter f s =
+    match s with
+    | Const x -> Const (filter_data f x)
+    | Mut s ->
+      let current = ref (filter_data f !(s.current)) in
+      let event = React.E.map (fun msg ->
+          let msg = filter_msg f msg in
+          begin match msg with
+            | Set l -> current := l;
+            | Patch p -> current := D.merge p !current
+          end;
+          msg) s.event in
+      Mut {current ;event}
+
+end
+
 module RList = struct
-  include Make (DataList)
+  include Make' (DataList)
   module D = DataList
   type 'a p = 'a D.p =
     | I of int * 'a

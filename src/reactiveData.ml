@@ -275,10 +275,13 @@ module DataList = struct
     | []     , _ :: _ ->
       false
 
-  let mem l =
-    let h = Hashtbl.create 1024 in
-    List.iter (fun x -> Hashtbl.add h x ()) l;
-    Hashtbl.mem h
+  let mem (type u) l =
+    let module H =
+      Hashtbl.Make
+        (struct type t = u let hash = Hashtbl.hash let equal = (==) end) in
+    let h = H.create 16 in
+    List.iter (fun x -> H.add h x ()) l;
+    H.mem h
 
   let fold_diff ?(eq = (=)) ~acc ~remove ~add lx ly =
     let memx = mem lx
@@ -347,6 +350,25 @@ module RList = struct
   let update x i s = patch s [D.U (i,x)]
   let move i j s = patch s [D.X (i,j)]
   let remove i s = patch s [D.R i]
+
+  let index ?(eq = (=)) l x =
+    let rec f n = function
+      | hd :: _ when eq hd x -> n
+      | _ :: tl -> f (n + 1) tl
+      | [] -> raise Not_found
+    in
+    f 0 l
+
+  let update_eq ?eq (data, handle) x y =
+    let i = index ?eq (value data) x in
+    update y i handle
+
+  let remove_last (data, handle) =
+    remove (List.length (value data) - 1) handle
+
+  let remove_eq ?eq (data, handle) x =
+    let i = index ?eq (value data) x in
+    remove i handle
 
   let singleton x = const [x]
 
@@ -641,6 +663,45 @@ module RList = struct
     in
     let e = React.E.map filter_e (event l) in
     from_event (filter_list (value l)) e
+
+  module IntSet =
+    Set.Make (struct type t = int let compare = Pervasives.compare end)
+
+  let for_all fn data =
+    let maybe_update acc i v = if fn v then acc else IntSet.add i acc in
+    let init =
+      let rec fold i acc = function
+        | v :: tl -> fold (i + 1) (maybe_update acc i v) tl
+        | [] -> acc
+      in
+      fold 0 IntSet.empty
+    in
+    let update_idx_after i f acc =
+      IntSet.map (fun i' -> if i' >= i then f i' 1 else i') acc
+    in
+    let f = fun acc -> function
+      | Set x -> init x
+      | Patch updates ->
+        List.fold_left
+          (fun acc -> function
+             | X (i, i') ->
+               if IntSet.mem i acc = IntSet.mem i' acc
+               then acc
+               else if IntSet.mem i acc
+               then IntSet.add i' (IntSet.remove i acc)
+               else IntSet.add i (IntSet.remove i' acc)
+             | R i ->
+               update_idx_after i (-) (IntSet.remove i acc)
+             | I (i, v) ->
+               let acc = update_idx_after i (+) acc in
+               maybe_update acc i v
+             | U (i, v) ->
+               maybe_update (IntSet.remove i acc) i v)
+          acc
+          updates
+    in
+    React.S.fold f (init (value data)) (event data)
+    |> React.S.map IntSet.is_empty
 
 end
 

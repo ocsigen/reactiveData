@@ -1,0 +1,5 @@
+(library
+  (name reactiveData)
+  (public_name reactiveData)
+  (libraries react)
+)

@@ -1,5 +1,0 @@
-<src/reactiveData.*>: package(react)
-true: warn(A-4-40-42-44-48)
-true: warn_error(+1..49), warn_error(-45-3)
-true: strict_sequence, safe_string, short_paths
-true: bin_annot

@@ -213,6 +213,7 @@ sig
   val filter : (M.key -> 'a -> bool) -> 'a t -> 'a t
 
 end
+
 (** Signature describing a raw data container (['a data]).
 
     Given an implementation of [DATA], an incremental version of the

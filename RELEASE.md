@@ -1,13 +1,8 @@
-* To update dev documentation
-```
-make gh-pages
-```
+* To release:
 
-* To release
 ```
-make release VERSION=1.0.0
-git push && git push --tags
-make prepare VERSION=1.0.0
+opam install -y dune-release
+dune-release distrib # to test
+dune-release tag     # git tag
+dune-release         # upload and submit to opam
 ```
-Then check that everything is fine and follow the instructions.
-Don't forget to change the doc field inside the opam file.

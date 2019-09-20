@@ -32,7 +32,6 @@
 module type S = sig
 
   (** Reactive version of the data container *)
-  type 'a t
 
   (** Raw (non-reactive) version of the data container *)
   type 'a data
@@ -46,6 +45,8 @@ module type S = sig
                             on the current contents *)
     | Set of 'a data    (** With [Set d], [d] becomes the new
                             content *)
+
+  type 'a t
 
   (** Handle that permits applying incremental updates *)
   type 'a handle
@@ -176,6 +177,8 @@ sig
 
   (** Produce container list containing a single, constant element *)
   val singleton : 'a -> 'a t
+
+  val filter : ('a -> bool) -> 'a t -> 'a t
 
   (** Produce reactive list containing a single element that gets
       updated based on a signal *)

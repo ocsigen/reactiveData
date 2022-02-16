@@ -474,12 +474,7 @@ module RList = struct
     from_event (List.rev (value t)) e
 
   let filter pred l =
-    let module IntMap = Map.Make(
-                            struct
-                              let compare = Pervasives.compare
-                              type t = int
-                            end )
-    in
+    let module IntMap = Map.Make(Int) in
 
     let index = ref IntMap.empty in
     let size = ref 0 in
@@ -664,8 +659,7 @@ module RList = struct
     let e = React.E.map filter_e (event l) in
     from_event (filter_list (value l)) e
 
-  module IntSet =
-    Set.Make (struct type t = int let compare = Pervasives.compare end)
+  module IntSet = Set.Make (Int)
 
   let for_all fn data =
     let maybe_update acc i v = if fn v then acc else IntSet.add i acc in

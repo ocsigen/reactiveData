@@ -14,7 +14,7 @@ tags: [ "reactive" "declarative" "signal" "event" "frp" ]
 license: "LGPL-3.0 with OCaml linking exception"
 
 depends: [
-  "ocaml" {>= "4.06.1"}
+  "ocaml" {>= "4.08"}
   "dune" {build}
   "react" {>= "1.2.1" < "1.3"}
 ]

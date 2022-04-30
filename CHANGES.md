@@ -1,6 +1,7 @@
 ## 0.2.3
 
 * port to dune from ocamlbuild
+* Add support for ocaml 5.0
 
 ## 0.2.2
 

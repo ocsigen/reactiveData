@@ -33,7 +33,6 @@ jobs:
         uses: ocaml/setup-ocaml@v3
         with:
           ocaml-compiler: ${{ matrix.ocaml-compiler }}
-          allow-prerelease-opam: true
 
       - run: opam install . --deps-only --with-test
 
@@ -51,7 +50,6 @@ jobs:
         uses: ocaml/setup-ocaml@v3
         with:
           ocaml-compiler: "4.14"
-          allow-prerelease-opam: true
 
       - uses: ocaml/setup-ocaml/lint-doc@v3
 
@@ -65,6 +63,5 @@ jobs:
         uses: ocaml/setup-ocaml@v3
         with:
           ocaml-compiler: "4.14"
-          allow-prerelease-opam: true
 
       - uses: ocaml/setup-ocaml/lint-opam@v3

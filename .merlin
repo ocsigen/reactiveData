@@ -1,5 +1,0 @@
-S src/*
-B _build/*
-
-PKG react
-FLG -warn A-4-40-42-44-48

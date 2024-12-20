@@ -12,7 +12,7 @@
  (name reactiveData)
  (synopsis "Declarative events and signals for OCaml")
  (description "React is an OCaml module for functional reactive programming (FRP). It provides support to program with time varying values : declarative events and signals. React doesn't define any primitive event or signal, it lets the client chooses the concrete timeline.")
- (tags ("reactive" "declarative" "signal" "event" "frp"))
  (depends
   (ocaml (>= 4.08))
-  (react (and (>= 1.2.1) (< 1.3)))))
+  (react (>= 1.2.1)))
+ (tags ("reactive" "declarative" "signal" "event" "frp")))

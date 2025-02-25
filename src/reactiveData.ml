@@ -347,14 +347,17 @@ module RList = struct
     let first = ref true in
     let e, send = React.E.create () in
     let result = from_event [] e in
-    let _ =
-      React.S.map
-        (fun x ->
-          if !first then (
-            first := false;
-            send (Patch [ I (0, x) ]))
-          else send (Patch [ U (0, x) ]))
-        s
+    let (`R _) =
+      let s' =
+        React.S.map
+          (fun x ->
+            if !first then (
+              first := false;
+              send (Patch [ I (0, x) ]))
+            else send (Patch [ U (0, x) ]))
+          s
+      in
+      React.E.retain e (fun () -> ignore (React.S.value s'))
     in
     result
 

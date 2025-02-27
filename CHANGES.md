@@ -1,3 +1,7 @@
+## 0.2.4
+
+* Bugfix: RList.singleton_s: make sure to keep intermediate signal alive.
+
 ## 0.2.3
 
 * port to dune from ocamlbuild

@@ -10,7 +10,7 @@ tags: ["reactive" "declarative" "signal" "event" "frp"]
 homepage: "https://github.com/ocsigen/reactiveData"
 bug-reports: "https://github.com/ocsigen/reactiveData/issues"
 depends: [
-  "dune" {>= "3.18"}
+  "dune" {>= "3.19"}
   "ocaml" {>= "4.08"}
   "react" {>= "1.2.1"}
   "odoc" {with-doc}

@@ -1,4 +1,4 @@
-(lang dune 3.18)
+(lang dune 3.19)
 (name reactiveData)
 
 (generate_opam_files true)

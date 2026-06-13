@@ -6,6 +6,7 @@
 (project reactiveData)
 (title ReactiveData)
 (pub /reactiveData)
+(manual-root)
 (profile release)                       ; dune build @doc --profile release
 (landing reactiveData/index.html)
 ;; no (highlight …): ReactiveData has no ppx, so wodoc's default starter is enough.

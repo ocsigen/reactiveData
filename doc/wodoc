@@ -1,0 +1,17 @@
+;; Declarative wodoc config for the ReactiveData documentation.
+;; Built by `wodoc build` (no client/server split, no manual): a single library
+;; with one module, so a plain `dune build @doc` is enough.
+;;   wodoc build --config doc/wodoc --out <dir>/<label> \
+;;               --label <v> --menu <shared menu.html> [--latest]
+(project reactiveData)
+(title ReactiveData)
+(pub /reactiveData)
+(manual-root)
+(profile release)                       ; dune build @doc --profile release
+(landing reactiveData/index.html)
+;; no (highlight …): ReactiveData has no ppx, so wodoc's default starter is enough.
+(packages reactiveData)
+(nav
+  (section "ReactiveData"
+    (link "Overview"     reactiveData/index.html              reactiveData)
+    (link "ReactiveData" reactiveData/ReactiveData/index.html reactiveData)))

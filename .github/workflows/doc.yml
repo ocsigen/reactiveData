@@ -1,54 +1,41 @@
-name: Deploy odoc to GitHub Pages
-
+# Build the documentation with odoc, theme it with the Ocsigen chrome (wodoc),
+# and publish it on the project's gh-pages branch (https://ocsigen.org/reactiveData/).
+# See doc/README.md. CI deploys ONLY dev/ from master; stable versions are frozen
+# at release time (`wodoc release`). No client/server split -> plain dune @doc.
+name: Documentation
 on:
   push:
-    branches:
-      - master
-
-permissions: read-all
-
-concurrency:
-  group: deploy-odoc
-  cancel-in-progress: true
-
+    branches: [master]
+  workflow_dispatch: {}
 jobs:
-  deploy-odoc:
-    name: Deploy odoc to GitHub Pages
-
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-
-    permissions:
-      contents: read
-      id-token: write
-      pages: write
-
+  build-deploy:
+    if: github.repository == 'ocsigen/reactiveData'
     runs-on: ubuntu-latest
-
+    permissions:
+      contents: write
     steps:
-      - name: Checkout tree
-        uses: actions/checkout@v6
-
-      - name: Set-up OCaml
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up OCaml
         uses: ocaml/setup-ocaml@v3
         with:
-          ocaml-compiler: 5
-
+          ocaml-compiler: "5.4.0"
       - name: Install dependencies
-        run: opam install . --deps-only --with-doc
-
-      - name: Build documentation
-        run: opam exec -- dune build @doc
-
-      - name: Set-up Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v4
+        run: |
+          opam install . --deps-only --with-doc
+          opam pin add -n wodoc https://github.com/ocsigen/wodoc.git
+          opam install wodoc odoc
+      - name: Build documentation (dev)
+        run: >-
+          opam exec -- wodoc build --config doc/wodoc
+          --menu https://ocsigen.org/doc/menu.html
+          --out "$PWD/_doc-site/dev" --label dev
+      - name: Deploy to gh-pages (replace only dev/, keep the rest)
+        uses: JamesIves/github-pages-deploy-action@v4
         with:
-          path: _build/default/_doc/_html
-
-      - name: Deploy odoc to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+          branch: gh-pages
+          folder: _doc-site/dev
+          target-folder: dev
+          clean: true

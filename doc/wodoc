@@ -5,7 +5,8 @@
 ;;               --label <v> --menu <shared menu.html> [--latest]
 (project reactiveData)
 (title ReactiveData)
-(pub /reactiveData)
+(url-prefix /reactiveData)
+(css /css/style.css /css/ocsigen-odoc.css)  ; shared Ocsigen theme (wodoc css default changed)
 (manual-root)
 (profile release)                       ; dune build @doc --profile release
 (landing reactiveData/index.html)

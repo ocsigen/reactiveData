@@ -1,3 +1,7 @@
-# OCaml Package Documentation
 
-- [reactiveData](reactiveData/index.md)
+# reactiveData index
+
+
+## Library reactiveData
+
+The entry point of this library is the module: [`ReactiveData`](./ReactiveData.md).

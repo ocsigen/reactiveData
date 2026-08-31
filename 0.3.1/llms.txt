@@ -1,0 +1,15 @@
+# ReactiveData
+
+> The entry point of this library is the module: [`ReactiveData`](./ReactiveData.md).
+
+## Manual
+- [reactiveData index](index.md)
+
+## API
+- [Module `ReactiveData`](ReactiveData.md)
+- [Parameter `Make.D`](ReactiveData-Make-argument-1-D.md)
+- [Module `ReactiveData.Make`](ReactiveData-Make.md)
+- [Module `ReactiveData.RList`](ReactiveData-RList.md)
+- [Module `ReactiveData.RMap`](ReactiveData-RMap.md)
+- [Module type `ReactiveData.DATA`](ReactiveData-module-type-DATA.md)
+- [Module type `ReactiveData.S`](ReactiveData-module-type-S.md)

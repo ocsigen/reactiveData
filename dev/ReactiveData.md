@@ -1,4 +1,3 @@
-
 # Module `ReactiveData`
 
 ReactiveData is a module for data-aware functional reactive programming (FRP). It adds support to incremental changes in data structures by reasoning on patches instead of absolute values. ReactiveData is based on and inter-operates with React.

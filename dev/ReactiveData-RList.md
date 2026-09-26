@@ -1,4 +1,3 @@
-
 # Module `ReactiveData.RList`
 
 Reactive list data structure

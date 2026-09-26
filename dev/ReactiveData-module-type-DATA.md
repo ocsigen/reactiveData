@@ -1,4 +1,3 @@
-
 # Module type `ReactiveData.DATA`
 
 Signature describing a raw data container (`'a data`).

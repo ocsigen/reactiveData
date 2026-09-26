@@ -1,9 +1,9 @@
 # ReactiveData
 
-> The entry point of this library is the module: [`ReactiveData`](./ReactiveData.md).
+> - [reactiveData](reactiveData/index.md)
 
 ## Manual
-- [reactiveData index](index.md)
+- [OCaml Package Documentation](index.md)
 
 ## API
 - [Module `ReactiveData`](ReactiveData.md)

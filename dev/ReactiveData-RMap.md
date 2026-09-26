@@ -1,8 +1,6 @@
-
 # Module `ReactiveData.RMap`
 
 Reactive map data structure
-
 
 ## Parameters
 

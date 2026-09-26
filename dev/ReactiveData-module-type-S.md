@@ -1,4 +1,3 @@
-
 # Module type `ReactiveData.S`
 
 Signature describing a reactive data structure (`'a t`).

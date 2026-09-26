@@ -1,8 +1,6 @@
-
 # Module `ReactiveData.Make`
 
 Functor for turning a plain container into an incremental one
-
 
 ## Parameters
 

@@ -1,16 +1,13 @@
 # ReactiveData
 
-> The entry point of this library is the module: [`ReactiveData`](./ReactiveData.md).
+> - [reactiveData](reactiveData/index.md)
 
 
 ---
 
-# reactiveData index
+# OCaml Package Documentation
 
-
-## Library reactiveData
-
-The entry point of this library is the module: [`ReactiveData`](./ReactiveData.md).
+- [reactiveData](reactiveData/index.md)
 
 
 ---
@@ -101,7 +98,6 @@ The optional `?eq` argument is used for comparing the atoms inside `d1` and `d2`
 # Module `ReactiveData.Make`
 
 Functor for turning a plain container into an incremental one
-
 
 ## Parameters
 
@@ -409,7 +405,6 @@ val for_all : ('a -> bool) -> 'a t -> bool React.S.t
 # Module `ReactiveData.RMap`
 
 Reactive map data structure
-
 
 ## Parameters
 

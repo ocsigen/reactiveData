@@ -1,6 +1,6 @@
 # ReactiveData
 
-> The entry point of this library is the module: [`ReactiveData`](./ReactiveData.md).
+> ReactiveData brings functional reactive programming to data structures that change by small steps. Built on [React](https://erratique.ch/software/react), it represents the changes of a list or a map as patches (insert this element, remove that one) rather than as successive whole values, and the structures computed from it are updated with the same patches: a change costs work in proportion to its size, not to the size of the structure.
 
 ## Manual
 - [reactiveData index](index.md)

@@ -10,10 +10,11 @@ sources are also what ocaml.org renders.
 | What | Where | Format |
 |---|---|---|
 | API | the `.mli` of `reactiveData` (the `ReactiveData` module) | odoc comments |
+| Landing page | [`doc/index.mld`](index.mld) | odoc page |
 | Site configuration (nav, …) | [`doc/wodoc`](wodoc) | wodoc config (S-expression) |
 
-ReactiveData is a single-module library with no manual, so a plain
-`dune build @doc --profile release` builds the API. The page theming and the
+ReactiveData is a single-module library whose manual is its landing page, so
+`dune build @doc --profile release` builds it all. The page theming and the
 left navigation are declared in [`doc/wodoc`](wodoc) — an S-expression with the
 project metadata, the `(nav …)` left menu, and `(manual-root)` (single-package:
 deploy at the version root, so URLs are `/reactiveData/<version>/…` rather than

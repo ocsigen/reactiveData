@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-  <title>reactiveData index — ReactiveData</title>
+  <title>ReactiveData — ReactiveData</title>
   <link rel="stylesheet" href="/css/style.css"/>
   <link rel="stylesheet" href="/css/ocsigen-odoc.css"/>
   <link rel="alternate" type="text/markdown" href="./index.md"/>
@@ -90,7 +90,7 @@
 </div>
 <div class="page-toc">
   <h3>On this page</h3>
-  <nav class="odoc-toc odoc-local-toc"><ul><li><a href="#library-reactivedata">Library reactiveData</a></li></ul></nav>
+  <nav class="odoc-toc odoc-local-toc"><ul><li><a href="#overview">Overview</a></li><li><a href="#example">Example</a></li></ul></nav>
 </div>
 <nav class="api-nav manual-nav">
 <h3>ReactiveData</h3>
@@ -117,7 +117,7 @@
 </div>
 <div class="page-toc">
   <h3>On this page</h3>
-  <nav class="odoc-toc odoc-local-toc"><ul><li><a href="#library-reactivedata">Library reactiveData</a></li></ul></nav>
+  <nav class="odoc-toc odoc-local-toc"><ul><li><a href="#overview">Overview</a></li><li><a href="#example">Example</a></li></ul></nav>
 </div>
 <nav class="api-nav manual-nav">
 <h3>ReactiveData</h3>
@@ -129,8 +129,14 @@
 
       </nav>
       <article class="rightcol">
-        <header class="odoc-preamble"><h1 id="reactivedata-index">reactiveData index</h1></header>
-        <div class="odoc-content"><h2 id="library-reactivedata">Library reactiveData</h2><p>The entry point of this library is the module: <a href="ReactiveData/index.html"><code>ReactiveData</code></a>.</p></div>
+        <header class="odoc-preamble"><h1 id="reactivedata">ReactiveData</h1><p>ReactiveData brings functional reactive programming to data structures that change by small steps. Built on <a href="https://erratique.ch/software/react">React</a>, it represents the changes of a list or a map as patches (insert this element, remove that one) rather than as successive whole values, and the structures computed from it are updated with the same patches: a change costs work in proportion to its size, not to the size of the structure.</p><p>It is the basis of the reactive HTML of <a href="https://ocsigen.org/tyxml/">TyXML</a> and <a href="https://ocsigen.org/eliom/">Eliom</a>, where an element whose children come from a reactive list is updated in the page, child by child, when the list changes.</p></header>
+        <div class="odoc-content"><h2 id="overview">Overview</h2><ul><li><a href="ReactiveData/RList/index.html"><code>ReactiveData.RList</code></a>: reactive lists, the module you most likely need. <a href="ReactiveData/RList/index.html#val-create"><code>ReactiveData.RList.create</code></a> returns a list and a handle to change it, with <a href="ReactiveData/RList/index.html#val-cons"><code>ReactiveData.RList.cons</code></a>, <a href="ReactiveData/RList/index.html#val-snoc"><code>ReactiveData.RList.snoc</code></a>, <a href="ReactiveData/RList/index.html#val-insert"><code>ReactiveData.RList.insert</code></a>, <a href="ReactiveData/RList/index.html#val-remove"><code>ReactiveData.RList.remove</code></a> or <a href="ReactiveData/RList/index.html#val-update"><code>ReactiveData.RList.update</code></a>. <a href="ReactiveData/RList/index.html#val-map"><code>ReactiveData.RList.map</code></a>, <a href="ReactiveData/RList/index.html#val-filter"><code>ReactiveData.RList.filter</code></a>, <a href="ReactiveData/RList/index.html#val-concat"><code>ReactiveData.RList.concat</code></a> and <a href="ReactiveData/RList/index.html#val-rev"><code>ReactiveData.RList.rev</code></a> derive other reactive lists from it.</li><li><a href="ReactiveData/RMap/index.html"><code>ReactiveData.RMap</code></a>: reactive maps, over any <code>Map.S</code>.</li><li><a href="ReactiveData/Make/index.html"><code>ReactiveData.Make</code></a>: the reactive version of another data structure, given its patch format (<a href="ReactiveData/module-type-DATA/index.html"><code>ReactiveData.DATA</code></a>).</li></ul><p>Reactive structures and React signals convert into each other: <a href="ReactiveData/RList/index.html#val-from_signal"><code>ReactiveData.RList.from_signal</code></a> computes the patches between the successive values of a signal, and <a href="ReactiveData/RList/index.html#val-signal"><code>ReactiveData.RList.signal</code></a> is the signal of the current contents.</p><h2 id="example">Example</h2><pre class="language-ocaml"><code>let l, h = ReactiveData.RList.create [ 1; 2; 3 ]
+let squares = ReactiveData.RList.map (fun x -&gt; x * x) l
+
+(* Adding 4 at the end sends the patch to [squares], which computes the
+   square of 4 only. *)
+let () = ReactiveData.RList.snoc 4 h
+let () = assert (ReactiveData.RList.value squares = [ 1; 4; 9; 16 ])</code></pre></div>
       </article>
     </div>
   </div>
